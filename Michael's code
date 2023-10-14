@@ -1,0 +1,120 @@
+#include <MIDI.h>
+
+MIDI_CREATE_DEFAULT_INSTANCE();
+
+// Define maximum value that a midi note can be, 
+// this is is sued to set the size of the array
+const int MAX_MIDI_NOTE = 127;
+
+// Define an array for channel 1, the array index is the midi note, 
+// and the value the digital pin, and initialise to zero
+int channel1[MAX_MIDI_NOTE] = {0};
+
+void initialise_channel1_array()
+{
+	channel1[36] = 4;
+	channel1[37] = 5;
+	channel1[38] = 7;
+	channel1[39] = 8;
+	channel1[40] = 9;
+	channel1[41] = 10;
+	channel1[42] = 11;
+	channel1[43] = 12;
+	channel1[44] = 13;
+	channel1[45] = 14;
+	channel1[46] = 15;
+	channel1[47] = 16;
+	channel1[48] = 17;
+	channel1[49] = 18;
+	channel1[50] = 19;
+	channel1[51] = 20;
+	channel1[52] = 21;
+	channel1[53] = 22;
+	channel1[54] = 23;
+	channel1[55] = 24;
+	channel1[56] = 25;
+	channel1[57] = 26;
+	channel1[58] = 27;
+	channel1[59] = 28;
+	channel1[60] = 29;
+	channel1[61] = 30;
+	channel1[62] = 31;
+	channel1[63] = 32;
+	channel1[64] = 33;
+	channel1[65] = 34;
+	channel1[66] = 35;
+	channel1[67] = 38;
+	channel1[68] = 39;
+	channel1[69] = 40;
+	channel1[70] = 41;
+	channel1[71] = 42;
+	channel1[72] = 43;
+	channel1[73] = 44;
+	channel1[74] = 45;
+	channel1[75] = 1;
+}
+
+void SetNote(byte channel, byte note, byte velocity, bool turn_on)
+{
+	if(channel == 1)
+	{
+		// make sure that the midi note is not out of range of the array
+		if(note <= MAX_MIDI_NOTE)
+		{
+			// Lookup the solenoid pin from the array, using the note as the array index
+			int solenoid_pin = channel1[note];
+
+			// Check that the pin is not zero, there are some entryies in the array we have not set
+			if(solenoid_pin != 0)
+			{
+				// Check if we turning the pin on or off?
+				if(turn_on)
+				{
+					// Turn solenoid on
+					digitalWrite(solenoid_pin, HIGH);
+				} else {
+					// Turn solenoid off
+					digitalWrite(solenoid_pin, LOW);
+				}
+			}
+		}
+	}
+}
+
+void OnNoteOn(byte channel, byte note, byte velocity) {
+	// Call SetNote function to turn solenoid on
+	SetNote(channel, note, velocity, true);
+}
+
+void OnNoteOff(byte channel, byte note, byte velocity) {
+	// Call SetNote function to turn solenoid off
+	SetNote(channel, note, velocity, false);
+}
+
+void setup() {
+
+	// Initialise array
+	initialise_channel1_array();
+
+	// loop through all notes in channel 1 array
+	for(int idx = 0; idx <= MAX_MIDI_NOTE; idx++)
+	{
+		// Get the solenoid pin from the array
+		int solenoid_pin = channel1[idx];
+
+		// Check the pin is not zero
+		if(solenoid_pin != 0)
+		{
+			// Set pin output mode
+			pinMode(solenoid_pin, OUTPUT);
+		}
+	}
+  
+	MIDI.setHandleNoteOff(OnNoteOff);
+	MIDI.setHandleNoteOn(OnNoteOn);
+	MIDI.begin(MIDI_CHANNEL_OMNI);
+}
+
+void loop() {
+ 	MIDI.read();
+}
