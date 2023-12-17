@@ -1,0 +1,91 @@
+#include <MIDI.h>
+#include "Adafruit_TLC5947.h"
+
+#define NUM_TLC5947 1
+#define data   2
+#define clock   3
+#define latch   4
+
+Adafruit_TLC5947 tlc = Adafruit_TLC5947(NUM_TLC5947, clock, data, latch);
+
+int led = 0;
+int brightness = 50;
+int LED0brightness = 4000;
+
+int noteStart = 36; // C two octives below middle C
+int pinStart  = 5; // first pin to output on
+int pinEnd    = 53; // last pin to output on
+int buttonStates [48] = {0};
+int pinoffset = noteStart - pinStart;
+
+
+
+MIDI_CREATE_DEFAULT_INSTANCE();
+
+void OnNoteOn(byte channel, byte note, byte velocity) {
+
+  int led = note;
+
+    tlc.setPWM(led, brightness);
+	tlc.write();
+
+}
+
+void OnNoteOff(byte channel, byte note, byte velocity) {
+
+   int led = note;
+
+  tlc.setPWM(led, 0);
+	tlc.write();
+  
+}
+
+
+
+void setup() {
+  
+MIDI.setHandleNoteOff(OnNoteOff);
+  MIDI.setHandleNoteOn(OnNoteOn) ;
+  MIDI.begin(MIDI_CHANNEL_OMNI);
+
+ tlc.begin();
+
+  for(int i = 0; i <= 23; i++) {
+
+    tlc.setPWM(i, 0);
+	tlc.write();
+
+  }
+
+  for(int i = pinStart; i <= pinEnd; i++) {
+    pinMode(i, INPUT_PULLUP);
+    
+  }
+
+}
+
+void loop() {
+  
+ MIDI.read();
+
+ for(int i = pinStart; i <= pinEnd; i++) {
+
+    int x = buttonStates[i-pinStart];
+
+    if ((digitalRead(i) == LOW) && (x == 0)) {
+    
+    MIDI.sendNoteOn( i + pinoffset , 127 , 1); 
+    
+     buttonStates[i-pinStart] = 1;
+
+    }
+
+    if ((digitalRead(i) == HIGH) && (x == 1)) {
+    
+    MIDI.sendNoteOff( i + pinoffset , 127 , 1); 
+    
+     buttonStates[i-pinStart] = 0;
+
+    }
+ }
+}
