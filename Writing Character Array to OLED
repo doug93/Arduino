@@ -1,0 +1,36 @@
+#include <Wire.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
+
+
+#define OLED_WIDTH 128
+#define OLED_HIGHT 32
+
+#define Screen1_Address 0x3c // the i2C address of the Adafruit OLED screen that arrived first
+
+Adafruit_SSD1306 Screen1(OLED_WIDTH, OLED_HIGHT);
+
+char Screen1Text [] {"Testing"};
+
+
+void setup() {
+
+  Screen1.begin(SSD1306_SWITCHCAPVCC, Screen1_Address);
+  Screen1.clearDisplay();
+
+  Screen1.setTextSize(2);
+  Screen1.setTextColor(WHITE);
+  Screen1.setCursor(0,0);
+  
+  Screen1.println(Screen1Text);
+
+  Screen1.display();
+
+  delay(5000);
+
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+
+}
