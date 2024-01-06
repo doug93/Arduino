@@ -1,1 +1,62 @@
+#include <Wire.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
+
+#define OLED_RESET 4
+
+#define OLED_WIDTH 128
+#define OLED_HIGHT 32
+
+#define OLED_Address 0x3c
+#define Multiplexer1_Address 0x70
+#define Multiplexer2_Address 0x71
+
+Adafruit_SSD1306 Screen1(OLED_RESET);
+Adafruit_SSD1306 Screen2(OLED_RESET);
+
+char Screen1Text [] {"0x70 Channel 1"};
+char Screen2Text [] {"0x70 Channel 1"};
+
+void TCA9548A(uint8_t bus) {
+  
+  Wire.beginTransmission(Multiplexer1_Address);
+  Wire.write(1 << bus);
+  Wire.endTransmission(); 
+
+}
+
+
+void setup() {
+
+ Wire.begin();
+
+ TCA9548A(1);
+ Screen1.begin(SSD1306_SWITCHCAPVCC, OLED_Address);
+
+ TCA9548A(2);
+ Screen2.begin(SSD1306_SWITCHCAPVCC, OLED_Address);
+
+}
+
+void loop() {
+  
+  TCA9548A(1);
+  Screen1.clearDisplay();
+  Screen1.setTextSize(2);
+  Screen1.setTextColor(WHITE);
+  Screen1.setCursor(0,0);
+  Screen1.println(Screen1Text);
+  Screen1.display();
+
+  TCA9548A(2);
+  Screen2.clearDisplay();
+  Screen2.setTextSize(2);
+  Screen2.setTextColor(WHITE);
+  Screen2.setCursor(0,0);
+  Screen2.println(Screen1Text);
+  Screen2.display();
+
+  delay(100);
+
+}
 
