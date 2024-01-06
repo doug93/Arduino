@@ -1,45 +1,38 @@
-#include <Wire.h>
+#include <Wire.h> // Include Wire Library for I2C
+
+// Include Adafruit Graphics & OLED libraries
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_GFX.h>
 
-#define OLED_RESET 4
+#define OLED_RESET 4 // Reset pin not used but needed for library
 
+//define pixal dimensions of the OLEDs that we are working with
 #define OLED_WIDTH 128
 #define OLED_HIGHT 32
 
-#define OLED_Address 0x3c
-#define Multiplexer1_Address 0x70
-#define Multiplexer2_Address 0x71
+#define OLED_Address 0x3c //i2c address of the OLED displays we are working with - they are all the same
+#define Multiplexer1_Address 0x70 // i2c address of first multiplexer which has A0, A1 and A2 disconnected
+#define Multiplexer2_Address 0x71 // i2c address of second multiplexer which has A0 linked to 5 volts but A1 and A2 disconnected
 
-Adafruit_SSD1306 Screen1(OLED_RESET);
-Adafruit_SSD1306 Screen2(OLED_RESET);
 
+// define the two screens we are working with to be referred tol later in the code
+Adafruit_SSD1306 Screen1(OLED_WIDTH, OLED_HIGHT);
+Adafruit_SSD1306 Screen2(OLED_WIDTH, OLED_HIGHT);
+
+// character arrays set for the two screens we are working with
 char Screen1Text [] {"0x70 Channel 1"};
-char Screen2Text [] {"0x70 Channel 1"};
+char Screen2Text [] {"0x70 Channel 2"};
 
 void TCA9548A(uint8_t bus) {
   
   Wire.beginTransmission(Multiplexer1_Address);
-  Wire.write(1 << bus);
+  Wire.write(1 << bus);    // send byte to select bus
   Wire.endTransmission(); 
 
 }
 
+void UpdateScreen1() {
 
-void setup() {
-
- Wire.begin();
-
- TCA9548A(1);
- Screen1.begin(SSD1306_SWITCHCAPVCC, OLED_Address);
-
- TCA9548A(2);
- Screen2.begin(SSD1306_SWITCHCAPVCC, OLED_Address);
-
-}
-
-void loop() {
-  
   TCA9548A(1);
   Screen1.clearDisplay();
   Screen1.setTextSize(2);
@@ -48,13 +41,43 @@ void loop() {
   Screen1.println(Screen1Text);
   Screen1.display();
 
-  TCA9548A(2);
+}
+
+
+void UpdateScreen2() {
+
+  TCA9548A(1);
   Screen2.clearDisplay();
   Screen2.setTextSize(2);
   Screen2.setTextColor(WHITE);
   Screen2.setCursor(0,0);
   Screen2.println(Screen1Text);
   Screen2.display();
+
+}
+
+
+void setup() {
+
+ Wire.begin(); // Start Wire library for I2C
+
+// Set multiplexer to channel 1 and initialize OLED-0 with its I2C address
+ TCA9548A(1);
+ Screen1.begin(SSD1306_SWITCHCAPVCC, OLED_Address);
+ Screen1.clearDisplay();
+
+ TCA9548A(2);
+ Screen2.begin(SSD1306_SWITCHCAPVCC, OLED_Address);
+ Screen2.clearDisplay();
+
+ delay(100);
+
+}
+
+void loop() {
+  
+  UpdateScreen1();
+  UpdateScreen2();
 
   delay(100);
 
