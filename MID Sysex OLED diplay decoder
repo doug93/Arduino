@@ -1,0 +1,78 @@
+#include <Wire.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
+
+
+#define OLED_WIDTH 128
+#define OLED_HIGHT 32
+#define OLED_Text_Size 1
+#define OLED_Colour WHITE
+
+#define Screen1_Address 0x3c // the i2C address of the Adafruit OLED screen that arrived first
+
+Adafruit_SSD1306 Screen1(OLED_WIDTH, OLED_HIGHT);
+
+char Screen1Text [] {"Waiting for Hauptwerk"};
+
+void UpdateScreen1() {
+
+Screen1.clearDisplay();
+Screen1.setTextSize(OLED_Text_Size);
+Screen1.setTextColor(OLED_Colour);
+Screen1.setCursor(0,0);
+Screen1.println(Screen1Text);
+Screen1.display();
+delay(100);
+
+}
+
+
+
+#include <MIDI.h>
+#include <midi_Defs.h>
+#include <midi_Message.h>
+#include <midi_Namespace.h>
+#include <midi_Settings.h>
+
+#define MIDI_SYSEX_ARRAY_SIZE 255
+static const unsigned SysExMaxSize = 256;
+const unsigned int MAX_MESSAGE_LENGTH = 69;
+
+MIDI_CREATE_DEFAULT_INSTANCE();
+
+const byte MIDI_SYSEX=7; //code for SysEx command
+const byte ID_HAUPTWERK=0x7d; //ID for Hauptwerk. Could end in upper case D? currently unsure
+
+int midiType=0; 
+int data1=0;
+int data2=0;
+
+String hwline1="";
+String hwline2="";
+
+
+
+void setup() {
+
+  Serial.begin(9600); //set to serial rate for arduino uno
+
+  Screen1.begin(SSD1306_SWITCHCAPVCC, Screen1_Address);
+  Screen1.clearDisplay();
+
+  MIDI.begin(MIDI_CHANNEL_OMNI);
+  
+
+  delay(500);
+
+}
+
+void loop() {
+
+MIDI.read(); //read the midi
+
+
+
+
+UpdateScreen1();
+
+}
