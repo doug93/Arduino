@@ -9,40 +9,31 @@
 //define pixal dimensions of the OLEDs that we are working with
 #define OLED_WIDTH 128
 #define OLED_HIGHT 32
-#define OLED_RESET 4
 
 #define OLED_Address 0x3c //i2c address of the OLED displays we are working with - they are all the same
 #define Multiplexer1_Address 0x70 // i2c address of first multiplexer which has A0, A1 and A2 disconnected
 #define Multiplexer2_Address 0x71 // i2c address of second multiplexer which has A0 linked to 5 volts but A1 and A2 disconnected
 
 
-// define the two screens we are working with to be referred tol later in the code
-Adafruit_SSD1306 Screen1(OLED_RESET);
-Adafruit_SSD1306 Screen2(OLED_RESET);
+// define the two screens we are working with to be referred to later in the code
+Adafruit_SSD1306 Screen1(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+Adafruit_SSD1306 Screen2(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // character arrays set for the two screens we are working with
-char Screen1Text [] {"0x70 Channel 0"}; //to start with these two arrays are just being set to the address and channel needed to print to the corresponding displya
-char Screen2Text [] {"0x70 Channel 1"};
+char Screen1Text [] {"0x70 Channel 1"}; //to start with these two arrays are just being set to the address and channel needed to print to the corresponding displya
+char Screen2Text [] {"0x70 Channel 2"};
 
-void SwitchToScreen1() { //setting a function to feed a byte to the multiplexer to change the channel
-  
-  Wire.beginTransmission(Multiplexer1_Address);
-  Wire.write(1 << 0); //write the pins [SD0,SC0]
-  Wire.endTransmission(); 
-
-}
-
-void SwitchToScreen2() { //setting a function to feed a byte to the multiplexer to change the channel
-  
-  Wire.beginTransmission(Multiplexer1_Address);
-  Wire.write(1 << 1); //write the pins [SD1,SC1]
-  Wire.endTransmission(); 
-
+//setting a function to feed a byte to the multiplexer to change the channel
+  void TCA9548A(uint8_t bus){
+  Wire.beginTransmission(0x70);  // TCA9548A address is 0x70
+  Wire.write(1 << bus);          // send byte to select bus
+  Wire.endTransmission();
+  Serial.print(bus);
 }
 
 void UpdateScreen1() { //setting up a function to update the physical screen based on the characters currently stored in the corresponding character array
 
-  SwitchToScreen1();
+  TCA9548A(1);
   Screen1.clearDisplay();
   Screen1.setTextSize(2);
   Screen1.setTextColor(WHITE);
@@ -55,7 +46,7 @@ void UpdateScreen1() { //setting up a function to update the physical screen bas
 
 void UpdateScreen2() { //setting up a function to update the physical screen based on the characters currently stored in the corresponding character array
 
-  SwitchToScreen2();
+  TCA9548A(2);
   Screen2.clearDisplay();
   Screen2.setTextSize(2);
   Screen2.setTextColor(WHITE);
@@ -68,17 +59,21 @@ void UpdateScreen2() { //setting up a function to update the physical screen bas
 
 void setup() {
 
- Wire.begin(); // Start Wire library for I2C
+Serial.begin(115200);
 
+Wire.begin(); // Start Wire library for I2C
 
-// Set multiplexer to channel 1 and initialize OLED-0 with its I2C address
- SwitchToScreen1();
- Screen1.begin(SSD1306_SWITCHCAPVCC, OLED_Address);
+TCA9548A(1); // Set multiplexer to channel 1 and initialize OLED-0 with its I2C address
+if(!Screen1.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+  Serial.println(F("SSD1306 allocation failed"));
+  for(;;);
+} 
+
  Screen1.clearDisplay();
 
  delay(300);
 
- SwitchToScreen2();
+ TCA9548A(2);
  Screen2.begin(SSD1306_SWITCHCAPVCC, OLED_Address);
  Screen2.clearDisplay();
 
