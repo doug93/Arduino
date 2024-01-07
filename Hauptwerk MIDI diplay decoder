@@ -83,6 +83,8 @@ void loop() {
      }
   }
 
+Screen1Text [] = hwline1;
+
 UpdateScreen1();
 
 delay(500);
