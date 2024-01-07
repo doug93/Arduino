@@ -5,14 +5,15 @@
 
 #define OLED_WIDTH 128
 #define OLED_HIGHT 32
-#define OLED_Text_Size 1
+#define OLED_Text_Size 2
 #define OLED_Colour WHITE
 
 #define Screen1_Address 0x3c // the i2C address of the Adafruit OLED screen that arrived first
 
 Adafruit_SSD1306 Screen1(OLED_WIDTH, OLED_HIGHT);
 
-char Screen1Text [32] {"Waiting for Hauptwerk           "};
+char Screen1Text [32] {}; //delcaring 32 character array to hold 32 characters of text to be displayed on OLED
+//char ScreensText [25][32] {}; //attempt at 2 deimenstional array to hold the screen number each dline of text relates to - draft code to be fixed
 
 void UpdateScreen1() {
 
@@ -42,7 +43,7 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 const byte ID_HAUPTWERK=0x7D; //ID for Hauptwerk. Could end in upper case D? currently unsure
 const byte MIDI_SYSEX=7; //code for SysEx command
 
-String hwlines="";
+String hwlines=""; //creating a string to store characters from MIDI temporarily before loading into character array
 
 int midiType = 0; 
 int data1 = 0;
@@ -60,22 +61,24 @@ void processIncomingMIDIforOLED()
     data1 = MIDI.getData1();
     data2 = MIDI.getData2();
 
-    // We are interested in SysEx messages
+      if ((midiType == midi::SystemExclusive) && (data1 < 80)) { // We are interested in SysEx messages
 
-    if ((midiType == midi::SystemExclusive) && (data1 < 80)) {
+       const byte *sysexmessage = MIDI.getSysExArray(); // This is a SysEx message and will fit in our array
 
-      // This is a SysEx message and will fit in our array
-      const byte *sysexmessage = MIDI.getSysExArray();
+         if ((sysexmessage[1] == ID_HAUPTWERK) && (data1 > 24)) { // This is from Hauptwerk
 
-      if ((sysexmessage[1] == ID_HAUPTWERK) && (data1 > 24)) {
-        // This is from Hauptwerk
+         int ScreenIndex = sysexmessage[3];
 
-        for (int x = 6; x < (37); x++) {
-          // Step through sysex message
-          byte c = sysexmessage[x];
-          hwlines = hwlines + char(c);
-        }
+           for (int x = 6; x < (37); x++) { // Step through sysex message
+           
+           byte c = sysexmessage[x];
+           hwlines += char(c); //temporarily store characters from MIDI in a string
 
+          }
+
+         int str_len = hwlines.length() + 1;
+          
+         hwlines.toCharArray(Screen1Text, str_len); //move  characters from the string into the Character array defined at the start of the code
       }
     }
   }
@@ -85,7 +88,7 @@ void setup() {
 
   Serial.begin(9600); //set to serial rate for arduino uno
 
-  Screen1.begin(SSD1306_SWITCHCAPVCC, Screen1_Address);
+  Screen1.begin(SSD1306_SWITCHCAPVCC, Screen1_Address); //begin the OLED dispaly we are using
   Screen1.clearDisplay();
 
   MIDI.begin(MIDI_CHANNEL_OMNI);
@@ -94,12 +97,8 @@ void setup() {
 
 void loop() {
 
- processIncomingMIDIforOLED();
+ processIncomingMIDIforOLED(); //decode the MIDI messages and store it in the character array
 
- int str_len = hwlines.length() + 1;
-  
- hwlines.toCharArray(Screen1Text, str_len);
-
- UpdateScreen1();
+ UpdateScreen1(); //update the physical display screen using the latest character array
 
 }
