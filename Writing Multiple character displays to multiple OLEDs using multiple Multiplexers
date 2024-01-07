@@ -63,7 +63,7 @@ Serial.begin(115200);
 
 Wire.begin(); // Start Wire library for I2C
 
-  TCA9548A(0); // Set multiplexer to channel 1 and initialize OLED-0 with its I2C address
+  TCA9548A(0); // Set multiplexer to channel 0 and initialize OLED-0 with its I2C address
   Screen1.begin(SSD1306_SWITCHCAPVCC, OLED_Address); 
   Screen1.clearDisplay();
 
