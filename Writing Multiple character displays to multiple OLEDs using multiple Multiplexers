@@ -76,3 +76,13 @@ Wire.begin(); // Start Wire library for I2C
  delay(300);
 
 }
+
+void loop(){
+
+ UpdateScreen1();
+
+ UpdateScreen2();
+
+}
+
+
