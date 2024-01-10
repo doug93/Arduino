@@ -8,7 +8,7 @@
 
 //define pixal dimensions of the OLEDs that we are working with
 #define OLED_WIDTH 128
-#define OLED_HEIGHT 32
+#define OLED_HEIGHT 64
 
 #define OLED_Address 0x3c //i2c address of the OLED displays we are working with - they are all the same
 #define Multiplexer1_Address 0x70 // i2c address of first multiplexer which has A0, A1 and A2 disconnected
@@ -83,5 +83,3 @@ void loop(){
  UpdateScreen2();
 
 }
-
-
