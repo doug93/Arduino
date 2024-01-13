@@ -58,7 +58,7 @@ void UpdateDisplay(char multiplexer, char channel) { //setting up a function to 
  Display.setTextColor(WHITE);
  Display.setCursor(0,0);
 
- char TextToPrint = DisplayText[multiplexer][channel];
+ char *TextToPrint = DisplayText[multiplexer][channel];
  Display.println(TextToPrint);
   
  TurnMultiplexerOff(multiplexer);
