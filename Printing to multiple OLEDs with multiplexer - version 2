@@ -1,0 +1,105 @@
+#include <Wire.h> // Include Wire Library for I2C
+
+// Include Adafruit Graphics & OLED libraries
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
+
+#define OLED_RESET 4 // Reset pin not used but needed for library
+
+#define Display_Width 128 //set of pixal width of OLEDs we are using (note this code assumes all the OLED displays we are using are the same size)
+#define Display_Height 64 //set of pixal width of OLEDs we are using (note this code assumes all the OLED displays we are using are the same size)
+#define Display_Address 0x3c //i2c address of the OLED displays we are working with - this code assumes that they are all the same
+#define Number_of_Multiplexers 2 //set to the number of multiplexers we are using in this setup 
+
+char MultiplexerAddresses [Number_of_Multiplexers] [4] {"0x70", "0x71"}; //list the i2c addresses of each multiplexer - note they all need to be different for this code to work
+
+
+Adafruit_SSD1306 Display(Display_Width, Display_Height, &Wire, -1); // define the screens we are working with to be referred to  later in the code
+
+
+char DisplayText[Number_of_Multiplexers][8][14] { //this 2D character array is storing text for each channel for each multiplexer. The number of rows in this array needs to match the number of multiplexers we are working with
+   
+
+  {"0x70 Channel 0", "0x70 Channel 1" , "0x70 Channel 2", "0x70 Channel 3", "0x70 Channel 4", "0x70 Channel 5", "0x70 Channel 6", "0x70 Channel 7"},
+  {"0x71 Channel 0", "0x71 Channel 1" , "0x71 Channel 2", "0x71 Channel 3", "0x71 Channel 4", "0x71 Channel 5", "0x71 Channel 6", "0x71 Channel 7"}
+
+};
+
+void TurnMultiplexerOff(char Multiplexer){ //Function to set multiplexers to ahve all channels off. Note when we call this fuctionn later we need to put in the number of the multiplexer we want.
+
+ char address = MultiplexerAddresses[Multiplexer - 1];
+  
+ Wire.beginTransmission(address);
+ Wire.write(0);  // no channel selected
+ Wire.endTransmission();
+
+}
+
+
+//setting a function to feed a byte to the multiplexer1 to change the channel
+void SwitchMultiplexerChannel(char Multiplexer, uint8_t bus){ //when calling  this  fuction latter - need to refrence  address of multiplexer  in question
+
+ char address = MultiplexerAddresses[Multiplexer - 1];
+
+ Wire.beginTransmission(address);
+ Wire.write(1 << bus);          // send byte to select bus
+ Wire.endTransmission();
+ Serial.print(address);
+ Serial.print(bus);
+
+}
+
+
+void UpdateDisplay(char multiplexer, char channel) { //setting up a function to update the physical screen based on the characters currently stored in the corresponding character array
+
+ SwitchMultiplexerChannel(multiplexer, channel);
+ Display.clearDisplay();
+ Display.setTextSize(2);
+ Display.setTextColor(WHITE);
+ Display.setCursor(0,0);
+
+ char TextToPrint = DisplayText[multiplexer][channel];
+ Display.println(TextToPrint);
+  
+ TurnMultiplexerOff(multiplexer);
+
+}
+
+
+
+void setup() {
+
+ Serial.begin(115200);
+
+ Wire.begin(); // Start Wire library for I2C
+
+ TurnMultiplexerOff(1);
+ TurnMultiplexerOff(0);
+ 
+
+ SwitchMultiplexerChannel(1, 0); // Set multiplexer to channel 0 and initialize OLED-0 with its I2C address
+ Display.begin(SSD1306_SWITCHCAPVCC, Display_Address);
+ TurnMultiplexerOff(1);
+
+ delay(300);
+ 
+ SwitchMultiplexerChannel(1, 1); // Set multiplexer to channel 0 and initialize OLED-0 with its I2C address
+ Display.begin(SSD1306_SWITCHCAPVCC, Display_Address);
+ TurnMultiplexerOff(1);
+ 
+ delay(300);
+ 
+ SwitchMultiplexerChannel(2, 0); // Set multiplexer to channel 0 and initialize OLED-0 with its I2C address
+ Display.begin(SSD1306_SWITCHCAPVCC, Display_Address);
+ TurnMultiplexerOff(2);
+
+ UpdateDisplay(1, 0);
+ UpdateDisplay(1, 1);
+ UpdateDisplay(2, 0);
+
+}
+
+
+void loop(){
+
+}
