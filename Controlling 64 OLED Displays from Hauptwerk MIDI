@@ -10,8 +10,8 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE); // a line of co
 
 char TextToDisplay[8][8][32] = { //array to store text to be displayed. Rows correspond to Multiplexers and columns correspond to channels.
  
- { {"Screen 1"},{"Screen 2"},{},{},{},{},{},{} },
- { {},{"Screen 3"},{},{},{},{},{},{} },
+ { {},{"Dick"},{"Tom"},{},{},{},{},{} },
+ { {},{"Hary"},{},{},{},{},{},{} },
  { {},{},{},{},{},{},{},{} },
  { {},{},{},{},{},{},{},{} },
  { {},{},{},{},{},{},{},{} },
@@ -135,11 +135,12 @@ void processIncomingMIDIforOLED() { // Process incoming MIDI traffic for Sysex (
 
           }
 
+         int str_len = CharactersFromHauptwerk.length() + 1;
          int Multiplexer = MultiplexersCorrespondingToHauptwerkScreenID[ScreenIndex];
          x = ChannelsCorrespondingToHauptwerkScreenID[ScreenIndex];
          y = CharactersFromHauptwerk.length() + 1;
           
-         CharactersFromHauptwerk.toCharArray(TextToDisplay[Multiplexer][Channel], str_len); //move  characters from the string into the Character array defined at the start of the code
+         CharactersFromHauptwerk.toCharArray(TextToDisplay[x][y], str_len); //move  characters from the string into the Character array defined at the start of the code
           
          UpdateDisplay(x, y); 
       }
