@@ -1,0 +1,166 @@
+#include <U8g2lib.h>
+#include "Wire.h"
+
+#define Font u8g2_font_6x10_tf //setting fonts for all displays in this code. See available fots at https://github.com/olikraus/u8g2/wiki/fntlist8x8
+#define time_delay 0
+
+char MultiplexerAddresses[8] {0x70,0x71,0x72,0x73,0x74,0x75,0x76,0x77};
+
+U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE); // a line of code we need to get the u8g2 library to work and control the OLED displays
+
+char TextToDisplay[8][8][32] = { //array to store text to be displayed. Rows correspond to Multiplexers and columns correspond to channels.
+ 
+ { {"Screen 1"},{"Screen 2"},{},{},{},{},{},{} },
+ { {},{"Screen 3"},{},{},{},{},{},{} },
+ { {},{},{},{},{},{},{},{} },
+ { {},{},{},{},{},{},{},{} },
+ { {},{},{},{},{},{},{},{} },
+ { {},{},{},{},{},{},{},{} },
+ { {},{},{},{},{},{},{},{} },
+ { {},{},{},{},{},{},{},{} },
+
+}; 
+
+
+int MultiplexersCorrespondingToHauptwerkScreenID[64] = {
+
+  0, 0, 0, 0, 0, 0, 0, 0,
+  1, 1, 1, 1, 1, 1, 1, 1,
+  2, 2, 2, 2, 2, 2, 2, 2,
+  3, 3, 3, 3, 3, 3, 3, 3,
+  4, 4, 4, 4, 4, 4, 4, 4,
+  5, 5, 5, 5, 5, 5, 5, 5,
+  6, 6, 6, 6, 6, 6, 6, 6,
+  7, 7, 7, 7, 7, 7, 7, 7,
+
+};
+
+
+int ChannelsCorrespondingToHauptwerkScreenID[64] = {
+  
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+
+};
+
+
+void SwitchMultiplexerChannel(int Multiplexer, uint8_t i) {
+
+  char Multiplexer_Address = MultiplexerAddresses[Multiplexer];
+
+  Wire.beginTransmission(Multiplexer_Address);
+  Wire.write(1 << i);
+  Wire.endTransmission(); 
+
+}
+
+
+void MultiplexerOff(int Multiplexer) {
+
+ char Multiplexer_Address = MultiplexerAddresses[Multiplexer];
+
+ Wire.beginTransmission(Multiplexer_Address);
+ Wire.write(0);  // no channel selected
+ Wire.endTransmission();
+
+}
+
+
+void UpdateDisplay(int Multiplexer, int Channel) {
+
+ SwitchMultiplexerChannel(Multiplexer, Channel);
+
+ u8g2.clearBuffer();					// clear the internal memory
+ u8g2.setFont(u8g2_font_ncenB08_tr);	// choose a suitable font
+ u8g2.drawStr(0, 10, TextToDisplay[Multiplexer][Channel]);	// write something to the internal memory
+ u8g2.sendBuffer();					// transfer internal memory to the display
+ delay(time_delay);
+
+ MultiplexerOff(Multiplexer);
+
+}
+
+
+#include <MIDI.h>
+#include <midi_Defs.h>
+#include <midi_Message.h>
+#include <midi_Namespace.h>
+#include <midi_Settings.h>
+
+#define MIDI_SYSEX_ARRAY_SIZE 255
+static const unsigned SysExMaxSize = 256;
+const unsigned int MAX_MESSAGE_LENGTH = 69;
+
+MIDI_CREATE_DEFAULT_INSTANCE();
+
+const byte ID_HAUPTWERK=0x7D; //ID for Hauptwerk. Could end in upper case D? currently unsure
+const byte MIDI_SYSEX=7; //code for SysEx command
+
+int midiType = 0; 
+int data1 = 0;
+int data2 = 0;
+
+String CharactersFromHauptwerk="";
+
+
+void processIncomingMIDIforOLED() { // Process incoming MIDI traffic for Sysex (no event handler)
+ 
+  if (MIDI.read()) {
+
+    midiType = MIDI.getType();
+    data1 = MIDI.getData1();
+    data2 = MIDI.getData2();
+
+      if ((midiType == midi::SystemExclusive) && (data1 < 80)) { // We are interested in SysEx messages
+
+       const byte *sysexmessage = MIDI.getSysExArray(); // This is a SysEx message and will fit in our array
+
+         if ((sysexmessage[1] == ID_HAUPTWERK) && (data1 > 24)) { // This is from Hauptwerk
+
+         int ScreenIndex = sysexmessage[3];
+
+           for (int x = 6; x < (37); x++) { // Step through sysex message
+           
+           byte c = sysexmessage[x];
+
+           CharactersFromHauptwerk += char(c); //temporarily store characters from MIDI in a string
+
+          }
+
+         int Multiplexer = MultiplexersCorrespondingToHauptwerkScreenID[ScreenIndex];
+         int Channel = ChannelsCorrespondingToHauptwerkScreenID[ScreenIndex];
+         int str_len = CharactersFromHauptwerk.length() + 1;
+          
+         CharactersFromHauptwerk.toCharArray(TextToDisplay[Multiplexer][Channel], str_len); //move  characters from the string into the Character array defined at the start of the code
+          
+         UpdateDisplay(Multiplexer, Channel); 
+      }
+    }
+  }
+}
+
+
+void setup(void) {
+
+ Wire.begin();
+ u8g2.begin();
+ MIDI.begin(MIDI_CHANNEL_OMNI);
+
+ UpdateDisplay(0,0);
+ UpdateDisplay(0,1);
+ UpdateDisplay(1,1);
+
+}
+
+
+void loop() {
+
+ processIncomingMIDIforOLED();
+  
+}
