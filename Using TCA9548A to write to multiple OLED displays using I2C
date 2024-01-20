@@ -1,0 +1,95 @@
+#include <U8g2lib.h>
+#include "Wire.h"
+
+#define Font u8g2_font_6x10_tf //setting fonts for all displays in this code. See available fots at https://github.com/olikraus/u8g2/wiki/fntlist8x8
+#define time_delay 0
+
+char MultiplexerAddresses[8] {0x70,0x71,0x72,0x73,0x74,0x75,0x76,0x77};
+
+U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE); // a line of code we need to get the u8g2 library to work and control the OLED displays
+
+char TextToDisplay[8][8][32] = { //array to store text to be displayed. Rows correspond to Multiplexers and columns correspond to channels.
+
+ { {"Screen 1"}, {"Screen 2"}, {}, {}, {}, {}, {}, {} },
+ { {}, {"Screen 3"}, {}, {}, {}, {}, {}, {} },
+ { {}, {}, {}, {}, {}, {}, {}, {} },
+ { {}, {}, {}, {}, {}, {}, {}, {} },
+ { {}, {}, {}, {}, {}, {}, {}, {} },
+ { {}, {}, {}, {}, {}, {}, {}, {} },
+ { {}, {}, {}, {}, {}, {}, {}, {} },
+ { {}, {}, {}, {}, {}, {}, {}, {} }
+ 
+};
+
+
+void StoreDataInCharacterArray() {
+
+ String CharactersFromHauptwerk=""; //creating a string to store characters from MIDI temporarily before loading into character array
+ 
+ int Multiplexer = 5;
+ int Channel = 7;
+
+ int str_len = CharactersFromHauptwerk.length() + 1;
+          
+ CharactersFromHauptwerk.toCharArray(TextToDisplay[Multiplexer][Channel], str_len); //move  characters from the string into the Character array defined at the start of the code
+
+}
+
+
+void SwitchMultiplexerChannel(int Multiplexer, uint8_t i) {
+
+  char Multiplexer_Address = MultiplexerAddresses[Multiplexer];
+
+  Wire.beginTransmission(Multiplexer_Address);
+  Wire.write(1 << i);
+  Wire.endTransmission(); 
+
+}
+
+
+void MultiplexerOff(int Multiplexer) {
+
+ char Multiplexer_Address = MultiplexerAddresses[Multiplexer];
+
+ Wire.beginTransmission(Multiplexer_Address);
+ Wire.write(0);  // no channel selected
+ Wire.endTransmission();
+
+}
+
+
+
+void UpdateDisplay(int Multiplexer, int Channel) {
+
+ SwitchMultiplexerChannel(Multiplexer, Channel);
+
+ u8g2.clearBuffer();					// clear the internal memory
+ u8g2.setFont(u8g2_font_ncenB08_tr);	// choose a suitable font
+ u8g2.drawStr(0, 10, TextToDisplay[Multiplexer][Channel]);	// write something to the internal memory
+ u8g2.sendBuffer();					// transfer internal memory to the display
+ delay(time_delay);
+
+ MultiplexerOff(Multiplexer);
+
+}
+
+ 
+
+void setup(void) {
+
+ Wire.begin();
+ u8g2.begin();
+  
+ UpdateDisplay(0,0);
+
+ UpdateDisplay(0,1);
+
+ UpdateDisplay(1,1);
+ 
+}
+
+
+
+void loop() {
+  
+}
