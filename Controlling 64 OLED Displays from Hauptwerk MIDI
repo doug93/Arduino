@@ -49,6 +49,8 @@ int ChannelsCorrespondingToHauptwerkScreenID[64] = {
 
 };
 
+int x = 0;
+int y = 0;
 
 void SwitchMultiplexerChannel(int Multiplexer, uint8_t i) {
 
@@ -134,12 +136,12 @@ void processIncomingMIDIforOLED() { // Process incoming MIDI traffic for Sysex (
           }
 
          int Multiplexer = MultiplexersCorrespondingToHauptwerkScreenID[ScreenIndex];
-         int Channel = ChannelsCorrespondingToHauptwerkScreenID[ScreenIndex];
-         int str_len = CharactersFromHauptwerk.length() + 1;
+         x = ChannelsCorrespondingToHauptwerkScreenID[ScreenIndex];
+         y = CharactersFromHauptwerk.length() + 1;
           
          CharactersFromHauptwerk.toCharArray(TextToDisplay[Multiplexer][Channel], str_len); //move  characters from the string into the Character array defined at the start of the code
           
-         UpdateDisplay(Multiplexer, Channel); 
+         UpdateDisplay(x, y); 
       }
     }
   }
@@ -152,9 +154,14 @@ void setup(void) {
  u8g2.begin();
  MIDI.begin(MIDI_CHANNEL_OMNI);
 
- UpdateDisplay(0,0);
- UpdateDisplay(0,1);
- UpdateDisplay(1,1);
+  for(int i = 0; i<64; i++) {
+
+  x = MultiplexersCorrespondingToHauptwerkScreenID[i];
+  y = ChannelsCorrespondingToHauptwerkScreenID[i];
+
+  UpdateDisplay(x,y);
+   
+  }
 
 }
 
