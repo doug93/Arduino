@@ -2,16 +2,17 @@
 #include "Wire.h"
 
 #define Font u8g2_font_6x10_tf //setting fonts for all displays in this code. See available fots at https://github.com/olikraus/u8g2/wiki/fntlist8x8
-#define time_delay 0000
+#define Font_Size 10
 
-char MultiplexerAddresses[8] {0x70,0x71,0x72,0x73,0x74,0x75,0x76,0x77};
+char MultiplexerAddresses[8] {0x70,0x71,0x72,0x73,0x74,0x75,0x76,0x77}; // array to store the I2C addressed  of  the  8  Multiplexers in this code
 
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE); // a line of code we need to get the u8g2 library to work and control the OLED displays
+
 
 char TextToDisplay[8][8][32] = { //array to store text to be displayed. Rows correspond to Multiplexers and columns correspond to channels.
  
  { {"Screen 1"},{"Screen 2"},{},{},{},{},{},{} },
- { {"Screen 3"},{"Screen 4"},{},{},{},{},{},{} },
+ { {"Screen 3"},{"Screen  4"},{},{},{},{},{},{} },
  { {},{},{},{},{},{},{},{} },
  { {},{},{},{},{},{},{},{} },
  { {},{},{},{},{},{},{},{} },
@@ -22,7 +23,7 @@ char TextToDisplay[8][8][32] = { //array to store text to be displayed. Rows cor
 }; 
 
 
-int Multiplexers[64] = {
+int Multiplexers[64] = { //array to match the 64 different OLED screen IDs from Hauptwerk with the corresponding Multiplexer
 
   0, 0, 0, 0, 0, 0, 0, 0,
   1, 1, 1, 1, 1, 1, 1, 1,
@@ -35,10 +36,8 @@ int Multiplexers[64] = {
 
 };
 
-int x = 0; // we will use this later as an index  to access the Multiplexer Array
 
-
-int Channels[64] = {
+int Channels[64] = { //array to match the 64 different OLED screen IDs from Hauptwerk with the corresponding Channel within the  Multiplexer
   
   0, 1, 2, 3, 4, 5, 6, 7,
   0, 1, 2, 3, 4, 5, 6, 7,
@@ -51,29 +50,38 @@ int Channels[64] = {
 
 };
 
-int y = 0; // we will use this later as an index  to access the Channel Array
 
-
-void SwitchMultiplexerChannel(int Multiplexer, uint8_t i) {
+void SwitchMultiplexerChannel(int Multiplexer, uint8_t i) { //funcion used to switch one one channel of the multiplexer we  are using
 
   char address = MultiplexerAddresses[Multiplexer];
 
   Wire.beginTransmission(address);
   Wire.write(1 << i);
-  delay(time_delay);
   Wire.endTransmission(); 
   
 }
 
 
-void MultiplexerOff(int Multiplexer) {
+void MultiplexerOff(int Multiplexer) { //funciton used to switch off all channels of the multiplexer we are using
 
  char address = MultiplexerAddresses[Multiplexer];
 
  Wire.beginTransmission(address);
  Wire.write(0);  // no channel selected
- delay(time_delay);
  Wire.endTransmission();
+
+}
+
+void StartDisplay(int Multiplexer, int Channel) { //funcitton used on setup  - important to  run  u8g2.begin when connected to each seperate  OLED in startup or they  won't work
+
+ SwitchMultiplexerChannel(Multiplexer, Channel);
+ u8g2.begin();
+ u8g2.clearBuffer();					// clear the internal memory
+ u8g2.setFont(u8g2_font_ncenB08_tr);	// choose a suitable font
+ u8g2.drawStr(0, 10, TextToDisplay[Multiplexer][Channel]);	// write something to the internal memory
+ u8g2.sendBuffer();					// transfer internal memory to the display
+ 
+ MultiplexerOff(Multiplexer);
 
 }
 
@@ -86,8 +94,7 @@ void UpdateDisplay(int Multiplexer, int Channel) {
  u8g2.setFont(u8g2_font_ncenB08_tr);	// choose a suitable font
  u8g2.drawStr(0, 10, TextToDisplay[Multiplexer][Channel]);	// write something to the internal memory
  u8g2.sendBuffer();					// transfer internal memory to the display
- delay(time_delay);
-
+ 
  MultiplexerOff(Multiplexer);
 
 }
@@ -108,44 +115,45 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 const byte ID_HAUPTWERK=0x7D; //ID for Hauptwerk. Could end in upper case D? currently unsure
 const byte MIDI_SYSEX=7; //code for SysEx command
 
-int midiType = 0; 
-int data1 = 0;
-int data2 = 0;
-
 
 void processIncomingMIDIforOLED() { // Process incoming MIDI traffic for Sysex (no event handler)
  
   if (MIDI.read()) {
 
-    midiType = MIDI.getType();
-    data1 = MIDI.getData1();
-    data2 = MIDI.getData2();
+   int midiType = 0; 
+   int data1 = 0;
+   int data2 = 0;
 
-      if ((midiType == midi::SystemExclusive) && (data1 < 80)) { // We are interested in SysEx messages
+   midiType = MIDI.getType();
+   data1 = MIDI.getData1();
+   data2 = MIDI.getData2();
 
-       const byte *sysexmessage = MIDI.getSysExArray(); // This is a SysEx message and will fit in our array
+    if ((midiType == midi::SystemExclusive) && (data1 < 80)) { // We are interested in SysEx messages 
 
-         if ((sysexmessage[1] == ID_HAUPTWERK) && (data1 > 24)) { // This is from Hauptwerk
+     const byte *sysexmessage = MIDI.getSysExArray(); // This is a SysEx message and will fit in our array
 
-         int ScreenIndex = sysexmessage[3];
+      if ((sysexmessage[1] == ID_HAUPTWERK) && (data1 > 24)) { // This is from Hauptwerk
 
-         String HauptwerkText = "";
+        int ScreenIndex = sysexmessage[3];
 
-           for (int x = 6; x < (37); x++) { // Step through sysex message
+        String HauptwerkText = "";
+
+        for (int x = 6; x < (37); x++) { // Step through sysex message
              
-           byte c = sysexmessage[x];
+          byte c = sysexmessage[x];
 
-           HauptwerkText += char(c); //temporarily store characters from MIDI in a string
+          HauptwerkText += char(c); //temporarily store characters from MIDI in a string
 
-          }
+        }
 
-         int str_len = HauptwerkText.length() + 1;
-         x = Multiplexers[ScreenIndex];
-         y = Channels[ScreenIndex];
-          
-         HauptwerkText.toCharArray(TextToDisplay[x][y], str_len); //move  characters from the string into the Character array defined at the start of the code
-          
-         UpdateDisplay(x, y); 
+       int str_len = HauptwerkText.length() + 1;
+       int x = Multiplexers[ScreenIndex];
+       int y = Channels[ScreenIndex];
+
+       HauptwerkText.toCharArray(TextToDisplay[x][y], str_len); //move  characters from the string into the Character array defined at the start of the code
+       
+       UpdateDisplay(x, y);
+       
       }
     }
   }
@@ -155,16 +163,15 @@ void processIncomingMIDIforOLED() { // Process incoming MIDI traffic for Sysex (
 void setup(void) {
 
  Wire.begin();
- u8g2.begin();
  MIDI.begin(MIDI_CHANNEL_OMNI);
 
   for(int i = 0; i<=63; i++) {
 
-  x = Multiplexers[i];
-  y = Channels[i];
+   int x = Multiplexers[i];
+   int y = Channels[i];
 
-  UpdateDisplay(x,y);
-   
+   StartDisplay(x,y); // inititialises or,  "boots" each display one by one and loads up the initial text to display we have manually set in the display to begin with (if  there is any)
+
   }
 
 }
