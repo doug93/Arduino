@@ -2,7 +2,7 @@
 #include "Wire.h"
 
 #define Font u8g2_font_6x10_tf //setting fonts for all displays in this code. See available fots at https://github.com/olikraus/u8g2/wiki/fntlist8x8
-#define time_delay 0
+#define time_delay 0000
 
 char MultiplexerAddresses[8] {0x70,0x71,0x72,0x73,0x74,0x75,0x76,0x77};
 
@@ -10,8 +10,8 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE); // a line of co
 
 char TextToDisplay[8][8][32] = { //array to store text to be displayed. Rows correspond to Multiplexers and columns correspond to channels.
  
- { {},{"Dick"},{"Tom"},{},{},{},{},{} },
- { {},{"Hary"},{},{},{},{},{},{} },
+ { {"Screen 1"},{"Screen 2"},{},{},{},{},{},{} },
+ { {"Screen 3"},{"Screen 4"},{},{},{},{},{},{} },
  { {},{},{},{},{},{},{},{} },
  { {},{},{},{},{},{},{},{} },
  { {},{},{},{},{},{},{},{} },
@@ -22,7 +22,7 @@ char TextToDisplay[8][8][32] = { //array to store text to be displayed. Rows cor
 }; 
 
 
-int MultiplexersCorrespondingToHauptwerkScreenID[64] = {
+int Multiplexers[64] = {
 
   0, 0, 0, 0, 0, 0, 0, 0,
   1, 1, 1, 1, 1, 1, 1, 1,
@@ -35,8 +35,10 @@ int MultiplexersCorrespondingToHauptwerkScreenID[64] = {
 
 };
 
+int x = 0; // we will use this later as an index  to access the Multiplexer Array
 
-int ChannelsCorrespondingToHauptwerkScreenID[64] = {
+
+int Channels[64] = {
   
   0, 1, 2, 3, 4, 5, 6, 7,
   0, 1, 2, 3, 4, 5, 6, 7,
@@ -49,26 +51,28 @@ int ChannelsCorrespondingToHauptwerkScreenID[64] = {
 
 };
 
-int x = 0;
-int y = 0;
+int y = 0; // we will use this later as an index  to access the Channel Array
+
 
 void SwitchMultiplexerChannel(int Multiplexer, uint8_t i) {
 
-  char Multiplexer_Address = MultiplexerAddresses[Multiplexer];
+  char address = MultiplexerAddresses[Multiplexer];
 
-  Wire.beginTransmission(Multiplexer_Address);
+  Wire.beginTransmission(address);
   Wire.write(1 << i);
+  delay(time_delay);
   Wire.endTransmission(); 
-
+  
 }
 
 
 void MultiplexerOff(int Multiplexer) {
 
- char Multiplexer_Address = MultiplexerAddresses[Multiplexer];
+ char address = MultiplexerAddresses[Multiplexer];
 
- Wire.beginTransmission(Multiplexer_Address);
+ Wire.beginTransmission(address);
  Wire.write(0);  // no channel selected
+ delay(time_delay);
  Wire.endTransmission();
 
 }
@@ -108,8 +112,6 @@ int midiType = 0;
 int data1 = 0;
 int data2 = 0;
 
-String CharactersFromHauptwerk="";
-
 
 void processIncomingMIDIforOLED() { // Process incoming MIDI traffic for Sysex (no event handler)
  
@@ -127,19 +129,21 @@ void processIncomingMIDIforOLED() { // Process incoming MIDI traffic for Sysex (
 
          int ScreenIndex = sysexmessage[3];
 
+         String HauptwerkText = "";
+
            for (int x = 6; x < (37); x++) { // Step through sysex message
-           
+             
            byte c = sysexmessage[x];
 
-           CharactersFromHauptwerk += char(c); //temporarily store characters from MIDI in a string
+           HauptwerkText += char(c); //temporarily store characters from MIDI in a string
 
           }
 
-         int str_len = CharactersFromHauptwerk.length() + 1;
-         x = MultiplexersCorrespondingToHauptwerkScreenID[ScreenIndex];
-         y = ChannelsCorrespondingToHauptwerkScreenID[ScreenIndex];
+         int str_len = HauptwerkText.length() + 1;
+         x = Multiplexers[ScreenIndex];
+         y = Channels[ScreenIndex];
           
-         CharactersFromHauptwerk.toCharArray(TextToDisplay[x][y], str_len); //move  characters from the string into the Character array defined at the start of the code
+         HauptwerkText.toCharArray(TextToDisplay[x][y], str_len); //move  characters from the string into the Character array defined at the start of the code
           
          UpdateDisplay(x, y); 
       }
@@ -154,10 +158,10 @@ void setup(void) {
  u8g2.begin();
  MIDI.begin(MIDI_CHANNEL_OMNI);
 
-  for(int i = 0; i<64; i++) {
+  for(int i = 0; i<=63; i++) {
 
-  x = MultiplexersCorrespondingToHauptwerkScreenID[i];
-  y = ChannelsCorrespondingToHauptwerkScreenID[i];
+  x = Multiplexers[i];
+  y = Channels[i];
 
   UpdateDisplay(x,y);
    
