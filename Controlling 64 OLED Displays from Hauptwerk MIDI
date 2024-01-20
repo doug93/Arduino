@@ -136,9 +136,8 @@ void processIncomingMIDIforOLED() { // Process incoming MIDI traffic for Sysex (
           }
 
          int str_len = CharactersFromHauptwerk.length() + 1;
-         int Multiplexer = MultiplexersCorrespondingToHauptwerkScreenID[ScreenIndex];
-         x = ChannelsCorrespondingToHauptwerkScreenID[ScreenIndex];
-         y = CharactersFromHauptwerk.length() + 1;
+         x = MultiplexersCorrespondingToHauptwerkScreenID[ScreenIndex];
+         y = ChannelsCorrespondingToHauptwerkScreenID[ScreenIndex];
           
          CharactersFromHauptwerk.toCharArray(TextToDisplay[x][y], str_len); //move  characters from the string into the Character array defined at the start of the code
           
