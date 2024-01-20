@@ -14,8 +14,8 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE); // a line of co
 
 char TextToDisplay[8][8][32] = { //array to store text to be displayed. Rows correspond to Multiplexers and columns correspond to channels.
  
- { {"9 Open Diapason"},{"Swell to Peddle"},{},{},{},{},{},{} },
- { {"32 Contra Trombone"},{"Screen  4"},{},{},{},{},{},{} },
+ { {"Screen 1"},{"Screen 2"},{},{},{},{},{},{} },
+ { {"Screen 3"},{"Screen 4"},{},{},{},{},{},{} },
  { {},{},{},{},{},{},{},{} },
  { {},{},{},{},{},{},{},{} },
  { {},{},{},{},{},{},{},{} },
@@ -85,6 +85,30 @@ void printwords(const char *msg, int xloc, int yloc /*bottom*/ ) { // display a 
 }
 
 
+void FormatDataToDisplay(int Multiplexer, int Channel){
+
+ u8g2.setFont(Font);
+
+ int TextWidth = TextToDisplay[Multiplexer][Channel];
+ int DisplayWidth = u8g2.getDisplayWidth(); // display width in pixels
+
+
+  if(TextWidth <= DisplayWidth){
+
+   u8g2.drawStr(CursorIndent, CursorHeight, TextToDisplay[Multiplexer][Channel]);	// write something to the internal memory
+
+  }
+
+
+  if(TextWidth > DisplayWidth){
+
+   printwords(TextToDisplay[Multiplexer][Channel], CursorIndent, CursorHeight);
+
+  }
+
+}
+
+
 int Multiplexers[64] = { //array to match the 64 different OLED screen IDs from Hauptwerk with the corresponding Multiplexer
 
   0, 0, 0, 0, 0, 0, 0, 0,
@@ -141,8 +165,7 @@ void StartDisplay(int Multiplexer, int Channel) { //funcitton used on setup  - i
 
  u8g2.begin();
  u8g2.clearBuffer();					// clear the internal memory
- u8g2.setFont(Font);
- printwords(TextToDisplay[Multiplexer][Channel], CursorIndent, CursorHeight);
+ FormatDataToDisplay(Multiplexer, Channel); 
  u8g2.sendBuffer();					// transfer internal memory to the display
  
  MultiplexerOff(Multiplexer);
@@ -155,8 +178,7 @@ void UpdateDisplay(int Multiplexer, int Channel) {
  SwitchMultiplexerChannel(Multiplexer, Channel);
 
  u8g2.clearBuffer();					// clear the internal memory
- u8g2.setFont(Font);
- printwords(TextToDisplay[Multiplexer][Channel], CursorIndent, CursorHeight);
+ FormatDataToDisplay(Multiplexer, Channel); 
  u8g2.sendBuffer();					// transfer internal memory to the display
  
  MultiplexerOff(Multiplexer);
