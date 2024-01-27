@@ -1,0 +1,210 @@
+#include <Wire.h> // Include Wire Library for I2C
+
+// Include Adafruit Graphics & OLED libraries
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
+#include <Fonts/FreeSans9pt7b.h>
+
+#define OLED_RESET 4 // Reset pin not used but needed for library
+
+#define Display_Width 128 //set of pixal width of OLEDs we are using (note this code assumes all the OLED displays we are using are the same size)
+#define Display_Height 32 //set of pixal width of OLEDs we are using (note this code assumes all the OLED displays we are using are the same size)
+#define Display_Address 0x3c //i2c address of the OLED displays we are working with - this code assumes that they are all the same
+
+#define Font //currently just using detault font
+#define FontSize 2
+
+
+char MultiplexerAddresses[] {0x70,0x71,0x72,0x73,0x74,0x75,0x76,0x77}; // array to store the I2C addressed  of  the  8  Multiplexers in this code
+
+
+Adafruit_SSD1306 Display(Display_Width, Display_Height); // define the screens we are working with to be referred to  later in the code
+
+
+char TextToDisplay[8][8][32] = { //array to store text to be displayed. Rows correspond to Multiplexers and columns correspond to channels.
+ 
+ { {"Tom"},{"Dick"},{},{},{},{},{},{} },
+ { {"Harry"},{"Mike"},{"Paul"},{},{},{},{},{} },
+
+}; 
+
+
+int Multiplexers[64] = { //array to match the 64 different OLED screen IDs from Hauptwerk with the corresponding Multiplexer
+
+  0, 0, 0, 0, 0, 0, 0, 0,
+  1, 1, 1, 1, 1, 1, 1, 1,
+  2, 2, 2, 2, 2, 2, 2, 2,
+  3, 3, 3, 3, 3, 3, 3, 3,
+  4, 4, 4, 4, 4, 4, 4, 4,
+  5, 5, 5, 5, 5, 5, 5, 5,
+  6, 6, 6, 6, 6, 6, 6, 6,
+  7, 7, 7, 7, 7, 7, 7, 7,
+
+};
+
+
+int Channels[64] = { //array to match the 64 different OLED screen IDs from Hauptwerk with the corresponding Channel within the  Multiplexer
+  
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+
+};
+
+
+void SwitchMultiplexerChannel(int Multiplexer, uint8_t i) { //funcion used to switch one one channel of the multiplexer we  are using
+
+  char address = MultiplexerAddresses[Multiplexer];
+
+  Wire.beginTransmission(address);
+  Wire.write(1 << i);
+  Wire.endTransmission(); 
+  
+}
+
+
+void MultiplexerOff(int Multiplexer) { //funciton used to switch off all channels of the multiplexer we are using
+
+ char address = MultiplexerAddresses[Multiplexer];
+
+ Wire.beginTransmission(address);
+ Wire.write(0);  // no channel selected
+ Wire.endTransmission();
+
+}
+
+
+void StartDisplay(int multiplexer, int channel){ //function to initiate display when first turned on and then show whatever is currenlty in the main character array
+
+ SwitchMultiplexerChannel(multiplexer, channel);  
+
+ Display.begin(SSD1306_SWITCHCAPVCC, Display_Address);
+
+ Display.clearDisplay();
+ Display.setFont(Font);
+ Display.setTextSize(FontSize);
+ Display.setTextColor(WHITE);
+ Display.setCursor(0,0);
+ Display.println(TextToDisplay[multiplexer][channel]);
+ Display.display();
+
+ MultiplexerOff(multiplexer);
+
+}
+
+
+void UpdateDisplay(int multiplexer, int channel) { //setting up a function to update the physical screen based on the characters currently stored in the corresponding character array
+
+ SwitchMultiplexerChannel(multiplexer, channel);
+
+ Display.clearDisplay();
+ Display.setFont(Font);
+ Display.setTextSize(FontSize);
+ Display.setTextColor(WHITE);
+ Display.setCursor(0,0);
+ Display.println(TextToDisplay[multiplexer][channel]);
+ Display.display();
+
+ MultiplexerOff(multiplexer);
+
+}
+
+
+
+#include <MIDI.h>
+#include <midi_Defs.h>
+#include <midi_Message.h>
+#include <midi_Namespace.h>
+#include <midi_Settings.h>
+
+#define MIDI_SYSEX_ARRAY_SIZE 255
+static const unsigned SysExMaxSize = 256;
+const unsigned int MAX_MESSAGE_LENGTH = 69;
+
+MIDI_CREATE_DEFAULT_INSTANCE();
+
+const byte ID_HAUPTWERK=0x7D; //ID for Hauptwerk. Could end in upper case D? currently unsure
+const byte MIDI_SYSEX=7; //code for SysEx command
+
+
+void processIncomingMIDIforOLED() { // Process incoming MIDI traffic for Sysex (no event handler)
+ 
+  if (MIDI.read()) {
+
+   int midiType = 0; 
+   int data1 = 0;
+   int data2 = 0;
+
+   midiType = MIDI.getType();
+   data1 = MIDI.getData1();
+   data2 = MIDI.getData2();
+
+    if ((midiType == midi::SystemExclusive) && (data1 < 80)) { // We are interested in SysEx messages 
+
+     const byte *sysexmessage = MIDI.getSysExArray(); // This is a SysEx message and will fit in our array
+
+      if ((sysexmessage[1] == ID_HAUPTWERK) && (data1 > 24)) { // This is from Hauptwerk
+
+        int ScreenIndex = sysexmessage[3];
+
+        String HauptwerkText = "";
+
+        for (int x = 6; x < (37); x++) { // Step through sysex message
+             
+          byte c = sysexmessage[x];
+
+          HauptwerkText += char(c); //temporarily store characters from MIDI in a string
+
+        }
+
+       int str_len = HauptwerkText.length() + 1;
+       int x = Multiplexers[ScreenIndex];
+       int y = Channels[ScreenIndex];
+
+       HauptwerkText.toCharArray(TextToDisplay[x][y], str_len); //move  characters from the string into the Character array defined at the start of the code
+
+       UpdateDisplay(x, y);
+
+      }
+    }
+  }
+}
+
+
+void setup() {
+
+
+ Wire.begin(); // Start Wire library for I2C
+ MIDI.begin(MIDI_CHANNEL_OMNI);
+ 
+
+  for(int i = 0; i<=7; i++){ //close all multiplexers to beging with in case any are currently set to certain channels from last time they were used
+
+   MultiplexerOff(i);
+
+  }
+
+
+  for(int i = 0; i<=63; i++) { 
+
+   int x = Multiplexers[i];
+   int y = Channels[i];
+
+   StartDisplay(x,y); 
+
+  }
+
+
+}
+
+
+void loop(){
+
+ processIncomingMIDIforOLED();
+
+}
