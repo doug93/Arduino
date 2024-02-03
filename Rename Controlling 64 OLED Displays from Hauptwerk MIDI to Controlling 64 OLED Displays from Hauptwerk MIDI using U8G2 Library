@@ -1,0 +1,343 @@
+#include <U8g2lib.h>
+#include "Wire.h"
+
+#define BigFont u8g2_font_lubR14_te //setting fonts for all displays in this code. Note each font has  a fixed  size. See available fots at https://github.com/olikraus/u8g2/wiki/fntlist8
+#define CursorHeight 15 //should be manually set to match the pixal height of the selected  font
+#define CursorIndent 0
+
+#define SmallFont u8x8_font_courB18_2x3_f
+
+char MultiplexerAddresses[8] {0x70,0x71,0x72,0x73,0x74,0x75,0x76,0x77}; // array to store the I2C addressed  of  the  8  Multiplexers in this code
+
+U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE); // a line of code we need to get the u8g2 library to work and control the OLED displays
+U8X8_SH1106_128X32_VISIONOX_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE); 
+
+char TextToDisplay[64][32] = {}; //array to store text to be displayed. Rows correspond to Multiplexers and columns correspond to channels.
+
+
+int ScreenSizes[64] = { //set to 0 for  32 pixal screens and  1 for  64 pixal screens
+  
+  0,0,0,0,0,0,1,1,
+  0,0,0,1,1,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+
+};
+
+
+void printwords(const char *msg, int xloc, int yloc /*bottom*/ ) { // display a string on multiple text lines, keeping words intact where possible, and accepting \n to force a new line - taken from https://github.com/olikraus/u8g2/discussions/1479
+   
+
+  int dspwidth = u8g2.getDisplayWidth(); // display width in pixels
+
+  int strwidth = 0;  // string width in pixels
+
+  char glyph[2]; glyph[1] = 0;
+
+
+  for (const char *ptr = msg, *lastblank = NULL; *ptr; ++ptr) {
+
+
+    while (xloc == 0 && (*msg == ' ' || *msg == '\n')) if (ptr == msg++) ++ptr; // skip blanks and newlines at the left edge
+      
+    glyph[0] = *ptr;
+     
+    strwidth += u8g2.getStrWidth(glyph); // accumulate the pixel width
+    
+    if (*ptr == ' ')  lastblank = ptr; // remember where the last blank was
+    
+    else ++strwidth; // non-blanks will be separated by one additional pixel
+    
+
+      if (*ptr == '\n' || xloc + strwidth > dspwidth) { // if we found a newline character, or if we ran past the right edge of the display
+      
+      int starting_xloc = xloc; // print to just before the last blank, or to just before where we got to
+         
+    
+       while (msg < (lastblank ? lastblank : ptr)) {
+
+       glyph[0] = *msg++;
+
+       xloc += u8g2.drawStr(xloc, yloc, glyph); 
+
+      }
+
+      strwidth -= xloc - starting_xloc; // account for what we printed
+
+      yloc += u8g2.getMaxCharHeight(); // advance to the next line
+
+      xloc = 0; lastblank = NULL;
+         
+    }
+   
+   }
+
+
+   while (*msg) { // print any characters left over
+
+   glyph[0] = *msg++;
+
+   xloc += u8g2.drawStr(xloc, yloc, glyph);
+    
+  }
+      
+}
+
+
+int Multiplexers[64] = { //array to match the 64 different OLED screen IDs from Hauptwerk with the corresponding Multiplexer
+
+  0, 0, 0, 0, 0, 0, 0, 0,
+  1, 1, 1, 1, 1, 1, 1, 1,
+  2, 2, 2, 2, 2, 2, 2, 2,
+  3, 3, 3, 3, 3, 3, 3, 3,
+  4, 4, 4, 4, 4, 4, 4, 4,
+  5, 5, 5, 5, 5, 5, 5, 5,
+  6, 6, 6, 6, 6, 6, 6, 6,
+  7, 7, 7, 7, 7, 7, 7, 7,
+
+};
+
+
+int Channels[64] = { //array to match the 64 different OLED screen IDs from Hauptwerk with the corresponding Channel within the  Multiplexer
+  
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+  0, 1, 2, 3, 4, 5, 6, 7,
+
+};
+
+
+void FormatDataToDisplay(int ScreenNumber){
+
+  int Multiplexer = Multiplexers[ScreenNumber];
+  int Channel = Channels[ScreenNumber];
+
+
+  if(ScreenSizes[ScreenNumber] = 0){
+
+    u8x8.setFont(SmallFont);
+
+    u8x8.drawString(CursorIndent, CursorHeight,TextToDisplay[ScreenNumber]);
+
+  }
+
+
+  if(ScreenSizes[ScreenNumber] = 1){
+
+   u8g2.setFont(BigFont);
+
+   int TextWidth = TextToDisplay[ScreenNumber];
+   int DisplayWidth = u8g2.getDisplayWidth(); // display width in pixels
+
+
+    if(TextWidth <= DisplayWidth){
+
+     u8g2.drawStr(CursorIndent, CursorHeight, TextToDisplay[ScreenNumber]);	// write something to the internal memory
+
+    }
+
+
+    if(TextWidth > DisplayWidth){
+
+     printwords(TextToDisplay[ScreenNumber], CursorIndent, CursorHeight);
+
+    }
+
+  }
+
+}
+
+
+
+
+
+void SwitchMultiplexerChannel(int Multiplexer, uint8_t i) { //funcion used to switch one one channel of the multiplexer we  are using
+
+  char address = MultiplexerAddresses[Multiplexer];
+
+  Wire.beginTransmission(address);
+  Wire.write(1 << i);
+  Wire.endTransmission(); 
+  
+};
+
+
+void MultiplexerOff(int Multiplexer) { //funciton used to switch off all channels of the multiplexer we are using
+
+ char address = MultiplexerAddresses[Multiplexer];
+
+ Wire.beginTransmission(address);
+ Wire.write(0);  // no channel selected
+ Wire.endTransmission();
+
+};
+
+
+void StartDisplay(int ScreenNumber) { //funcitton used on setup  - important to  run  u8g2.begin when connected to each seperate  OLED in startup or they  won't work
+
+ int Multiplexer = Multiplexers[ScreenNumber];
+ int Channel = Channels[ScreenNumber];
+
+ SwitchMultiplexerChannel(Multiplexer, Channel);
+
+
+  if (ScreenSizes[ScreenNumber] = 0) { 
+    
+   u8x8.begin();
+   u8x8.clearDisplay();
+   FormatDataToDisplay(ScreenNumber);
+   u8x8.display();
+       
+  }
+
+
+  if(ScreenSizes[ScreenNumber] = 1){
+
+   u8g2.begin();
+   u8g2.clearBuffer();
+   FormatDataToDisplay(ScreenNumber);
+   u8g2.sendBuffer();
+
+  }
+
+  MultiplexerOff(Multiplexer);
+
+}
+
+
+void UpdateDisplay(int ScreenNumber) {
+
+ int Multiplexer = Multiplexers[ScreenNumber];
+ int Channel = Channels[ScreenNumber];
+
+ SwitchMultiplexerChannel(Multiplexer, Channel);
+
+
+  if (ScreenSizes[ScreenNumber] = 0) { 
+    
+   u8x8.clearDisplay();
+   FormatDataToDisplay(ScreenNumber);
+   u8x8.display();
+       
+  }
+
+
+  if(ScreenSizes[ScreenNumber] = 1){
+
+   u8g2.clearBuffer();					// clear the internal memory
+   FormatDataToDisplay(ScreenNumber); 
+   u8g2.sendBuffer();					// transfer internal memory to the display
+
+  }
+ 
+ MultiplexerOff(Multiplexer);
+
+}
+
+
+#include <MIDI.h>
+#include <midi_Defs.h>
+#include <midi_Message.h>
+#include <midi_Namespace.h>
+#include <midi_Settings.h>
+
+#define MIDI_SYSEX_ARRAY_SIZE 255
+static const unsigned SysExMaxSize = 256;
+const unsigned int MAX_MESSAGE_LENGTH = 69;
+
+MIDI_CREATE_DEFAULT_INSTANCE();
+
+const byte ID_HAUPTWERK=0x7D; //ID for Hauptwerk. Could end in upper case D? currently unsure
+const byte MIDI_SYSEX=7; //code for SysEx command
+
+
+void processIncomingMIDIforOLED() { // Process incoming MIDI traffic for Sysex (no event handler)
+ 
+  if (MIDI.read()) {
+
+   int midiType = 0; 
+   int data1 = 0;
+   int data2 = 0;
+
+   midiType = MIDI.getType();
+   data1 = MIDI.getData1();
+   data2 = MIDI.getData2();
+
+    if ((midiType == midi::SystemExclusive) && (data1 < 80)) { // We are interested in SysEx messages 
+
+     const byte *sysexmessage = MIDI.getSysExArray(); // This is a SysEx message and will fit in our array
+
+      if ((sysexmessage[1] == ID_HAUPTWERK) && (data1 > 24)) { // This is from Hauptwerk
+
+        int ScreenIndex = sysexmessage[3];
+
+        String HauptwerkText = "";
+
+        for (int x = 6; x < (37); x++) { // Step through sysex message
+             
+          byte c = sysexmessage[x];
+
+          HauptwerkText += char(c); //temporarily store characters from MIDI in a string
+
+        }
+
+       int str_len = HauptwerkText.length() + 1;
+
+       HauptwerkText.toCharArray(TextToDisplay[ScreenIndex], str_len); //move  characters from the string into the Character array defined at the start of the code
+
+       UpdateDisplay(ScreenIndex);
+
+      }
+    }
+  }
+}
+
+
+void setup(void) {
+
+ Wire.begin();
+ MIDI.begin(MIDI_CHANNEL_OMNI);
+
+
+  for(int i = 1; i<=64; i++){ //filling the charactar array with the screen numbers per Hauptwerk
+
+   String Str ="Screen ";
+   Str += i;
+
+   int Str_len = Str.length() + 1;
+
+   Str.toCharArray(TextToDisplay[i-1], Str_len);
+ 
+  }
+
+
+  for(int i=0; i<8; i++){
+  
+  MultiplexerOff(i);
+
+  }
+
+
+  for(int i = 0; i<=63; i++) { 
+
+   StartDisplay(i); // inititialises or,  "boots" each display one by one and loads up the initial text to display we have manually set in the display to begin with (if  there is any)
+
+  }
+
+}
+
+
+void loop() {
+
+ processIncomingMIDIforOLED();
+ 
+}
