@@ -14,15 +14,17 @@
 #define Big_Screen_Height 64
 #define BigScreenFont &FreeSans9pt7b//define as "&" and then the name of the font we included above - this will then drive the font used later in the code. Leave blank here to just use the default font
 #define BigScreenFontSize 1 //will set size of text in dispalys later in the code
-int BigScreenLine1Start = 12;
-int BigScreenLineSpace  = 6;
+#define BigScreenLine1Start 12
+#define BigScreenLineSpace 6
+#define BigScreenBoarder 25
 
 #define Small_Screen_Width 128
 #define Small_Screen_Height 32
-#define SmallScreenFont //&FreeSans9pt7b
-#define SmallScreenFonttSize 2
-int SmallScreenLine1Start = 0;
-int SmallScreenLineSpace = 1;
+#define SmallScreenFont &FreeSans9pt7b
+#define SmallScreenFonttSize 1
+#define SmallScreenLine1Start 12
+#define SmallScreenLineSpace 6
+#define SmallScreenBoarder 25
 
 
 
@@ -36,14 +38,35 @@ char MultiplexerAddresses[] {0x70,0x71,0x72,0x73,0x74,0x75,0x76,0x77}; // array 
 char TextToDisplay[64][32] = {}; //array to store text to be displayed. Rows correspond to Multiplexers and columns correspond to channels.
 
 
-void drawCentreString(const char *buf, int x, int y) {
-    
-  int16_t x1, y1;
-  uint16_t w, h;
+int Width = 0;
 
-  BigScreen.getTextBounds(buf, x, y, &x1, &y1, &w, &h); //calc width of new string
-  BigScreen.setCursor((x-w)/2, y);
-  BigScreen.print(buf);
+void UpdateWidth(char *msg){
+
+ int x = 0;
+ int y = BigScreenLine1Start;
+
+ int16_t x1, y1;
+ uint16_t w, h;
+
+ BigScreen.setTextWrap(false);
+ BigScreen.getTextBounds(msg, x, y, &x1, &y1, &w, &h);
+
+ Width = w;
+
+}
+
+
+
+void drawCentreString(char *buf, int y) {
+
+ int x = Big_Screen_Width;
+
+ int16_t x1, y1;
+ uint16_t w, h;
+
+ BigScreen.getTextBounds(buf, x, y, &x1, &y1, &w, &h); //calc width of new string
+ BigScreen.setCursor((x-w)/2, y);
+ BigScreen.println(buf);
 
 }
 
@@ -51,29 +74,24 @@ void drawCentreString(const char *buf, int x, int y) {
 
 void FormatBigScreenText(int Screen_Number){
 
-  BigScreen.clearDisplay();
+ BigScreen.clearDisplay();
 
-  BigScreen.setFont(BigScreenFont);
-  BigScreen.setTextSize(BigScreenFontSize);
-  BigScreen.setTextColor(WHITE);
+ BigScreen.setFont(BigScreenFont);
+ BigScreen.setTextSize(BigScreenFontSize);
+ BigScreen.setTextColor(WHITE);
 
-  int x = 0;
-  int y = BigScreenLine1Start;
-
-  int16_t x1, y1;
-  uint16_t w, h;
-
-  BigScreen.getTextBounds(TextToDisplay[Screen_Number], x, y, &x1, &y1, &w, &h);
+ UpdateWidth(TextToDisplay[Screen_Number]);
 
 
-  if(w <= Big_Screen_Width) {
+ if(Width <= (Big_Screen_Width - BigScreenBoarder)) {
 
-   drawCentreString(TextToDisplay[Screen_Number], Big_Screen_Width, BigScreenLine1Start);
+   BigScreen.setCursor(0,  BigScreenLine1Start);
+   BigScreen.println(TextToDisplay[Screen_Number]);
 
   }
 
 
-  if( w > Big_Screen_Width ){
+  if( Width > (Big_Screen_Width - BigScreenBoarder) ){
 
    char Lines[4][32] = {};
    String Str = "";
@@ -87,18 +105,19 @@ void FormatBigScreenText(int Screen_Number){
     for(int i=0; i<32; i++){ //step through the characters in the master character array of text to display
 
 
-      if(LineWidth <= Big_Screen_Width){
+      if(LineWidth <= (Big_Screen_Width - BigScreenBoarder)){
 
        String Glyph = "";
        Glyph = TextToDisplay[Screen_Number][i];
 
-       int x = 0;
-       int y = BigScreenLine1Start;
+        int x = 0;
+        int y = BigScreenLine1Start;
 
-       int16_t x1, y1;
-       uint16_t w, h;
+        int16_t x1, y1;
+        uint16_t w, h;
 
-       BigScreen.getTextBounds(Glyph, x, y, &x1, &y1, &w, &h); //calc width of new string
+        BigScreen.setTextWrap(false);
+        BigScreen.getTextBounds(Glyph, x, y, &x1, &y1, &w, &h);
 
        LineWidth += w;
 
@@ -107,10 +126,10 @@ void FormatBigScreenText(int Screen_Number){
       }
     
 
-      if(LineWidth > Big_Screen_Width){
+      if(LineWidth > (Big_Screen_Width - BigScreenBoarder)){
 
 
-        for(int n = NextCharacterToPrint; n < LastBlank; n++){ //put the characters up to last blank intl the character array line 0
+        for(int n = NextCharacterToPrint; n <= LastBlank; n++){ //put the characters up to last blank intl the character array line 0
 
          Str += TextToDisplay[Screen_Number][n];
 
@@ -123,20 +142,14 @@ void FormatBigScreenText(int Screen_Number){
 
        Str.toCharArray(Lines[Line], str_len); //move  characters from the string into the Character array defined at the start of the code
 
-       int x = 0;
-       int y = BigScreenLine1Start;
+       UpdateWidth(Lines[Line]);
 
-       int16_t x1, y1;
-       uint16_t w, h;
-
-       BigScreen.getTextBounds(Str, x, y, &x1, &y1, &w, &h); //calc width of new string
-
-       LineWidth -= w; //reduce the variable "LineWidth" in our code by the width of the text we have put in the master character array to be printed
+       LineWidth -= Width; //reduce the variable "LineWidth" in our code by the width of the text we have put in the master character array to be printed
 
        Str = "";
 
        Line += 1; //increment line as we procedd to the next line of texyt to sprint
-      
+     
       }
 
     }
@@ -154,8 +167,9 @@ void FormatBigScreenText(int Screen_Number){
     
 
     for(int i=0; i <= Line; i++){
-
-     drawCentreString(Lines[i], Big_Screen_Width, BigScreenLine1Start + (BigScreenLine1Start + BigScreenLineSpace)*i );
+     
+     BigScreen.setCursor(0, BigScreenLine1Start + (BigScreenLine1Start + BigScreenLineSpace)*i );
+     BigScreen.println(Lines[i]);
     
     }
 
@@ -168,17 +182,109 @@ void FormatBigScreenText(int Screen_Number){
 
 void FormatSmallScreenText(int  Screen_Number){
    
-  SmallScreen.clearDisplay();
+ SmallScreen.clearDisplay();
 
-  SmallScreen.setFont(SmallScreenFont);
-  SmallScreen.setTextSize(SmallScreenFonttSize);
-  SmallScreen.setTextColor(WHITE);
-  SmallScreen.setCursor(0,SmallScreenLine1Start);
-  SmallScreen.println(TextToDisplay[Screen_Number]);
-  //SmallScreen.setCursor(0,SmallScreenLine1Start*2+SmallScreenLineSpace); //we;re only using  2 lines for the small  screen
-  //SmallScreen.println(TextToDisplay[Screen_Number][1]);
+ SmallScreen.setFont(BigScreenFont);
+ SmallScreen.setTextSize(BigScreenFontSize);
+ SmallScreen.setTextColor(WHITE);
+
+ UpdateWidth(TextToDisplay[Screen_Number]);
+
+
+ if(Width <= (Big_Screen_Width - BigScreenBoarder)) {
+
+   SmallScreen.setCursor(0,  BigScreenLine1Start);
+   SmallScreen.println(TextToDisplay[Screen_Number]);
+
+  }
+
+
+  if( Width > (Big_Screen_Width - BigScreenBoarder) ){
+
+   char Lines[4][32] = {};
+   String Str = "";
+
+   int Line  =  0;
+   int LineWidth = 0;
+   int LastBlank = 0;
+   int NextCharacterToPrint = 0;
+
+
+    for(int i=0; i<32; i++){ //step through the characters in the master character array of text to display
+
+
+      if(LineWidth <= (Small_Screen_Width - SmallScreenBoarder)){
+
+       String Glyph = "";
+       Glyph = TextToDisplay[Screen_Number][i];
+
+        int x = 0;
+        int y = SmallScreenLine1Start;
+
+        int16_t x1, y1;
+        uint16_t w, h;
+
+        SmallScreen.setTextWrap(false);
+        SmallScreen.getTextBounds(Glyph, x, y, &x1, &y1, &w, &h);
+
+       LineWidth += w;
+
+       if(Glyph == " ") { LastBlank = i; };
+
+      }
+    
+
+      if(LineWidth > (Small_Screen_Width - SmallScreenBoarder)){
+
+
+        for(int n = NextCharacterToPrint; n <= LastBlank; n++){ //put the characters up to last blank intl the character array line 0
+
+         Str += TextToDisplay[Screen_Number][n];
+
+         NextCharacterToPrint += 1;
+
+        }
+
+      
+       int str_len = Str.length() + 1;
+
+       Str.toCharArray(Lines[Line], str_len); //move  characters from the string into the Character array defined at the start of the code
+
+       UpdateWidth(Lines[Line]);
+
+       LineWidth -= Width; //reduce the variable "LineWidth" in our code by the width of the text we have put in the master character array to be printed
+
+       Str = "";
+
+       Line += 1; //increment line as we procedd to the next line of texyt to sprint
+     
+      }
+
+    }
+
+
+    for(int n = NextCharacterToPrint; n < 32; n++){ //put the characters up to last blank intl the character array line 0
+
+       Str += TextToDisplay[Screen_Number][n];
+
+    }
+
+   int str_len = Str.length() + 1;
+
+   Str.toCharArray(Lines[Line], str_len); //move  characters from the string into the Character array defined at the start of the code
+    
+
+    for(int i=0; i <= Line; i++){
+     
+     SmallScreen.setCursor(0, BigScreenLine1Start + (BigScreenLine1Start + BigScreenLineSpace)*i );
+     SmallScreen.println(Lines[i]);
+    
+    }
+
+  }
 
   SmallScreen.display();
+
 
 }
 
@@ -348,7 +454,7 @@ void processIncomingMIDIforOLED() { // Process incoming MIDI traffic for Sysex (
 
         String HauptwerkText = "";
         
-        for (int x = 6; x < 37; x++) { // Step through sysex message
+        for (int x = 6; x <= 37; x++) { // Step through sysex message
              
           byte c = sysexmessage[x];
 
@@ -377,7 +483,7 @@ void setup() {
 
   for(int i = 1; i<=64; i++){ //filling the charactar array with the screen numbers per Hauptwerk
 
-   String Str ="Screen Identifier ";
+   String Str ="Screen ";
    Str += i;
 
    int Str_len = Str.length() + 1;
