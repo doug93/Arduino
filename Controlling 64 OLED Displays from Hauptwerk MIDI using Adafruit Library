@@ -5,7 +5,7 @@
 //    - note that the below draft of the code assumes all the OLEDs will have the address 0x3c.
 //    - note also that you need to link various combinations of the A0, A1 and A2 pins on the multiplexers to the possitive terminal to give each multiplexer a different i2c address.
 //    - note one multiplexer can control up to 8 OLED displays. So with a maximul of 8 multiplexers each controlling 8 OLED displays you could have up to 64 OLEDs running which is why this code is written to accomodate up to 64 OLEDs 
-// your choice of up to 64 OLEDs. This code is intended for a combination of 32 pixal wide OLEDs and 64 pixal wide, but all 128 pixals high. The code can be changed to accomodate any combination - just tell the software what OLEDs are 64 pixal and which ones are 32 pixal in the ScreenSixes array further down in the code.
+// your choice of up to 64 OLEDs. Note the below version of the code is currenlty written to run a mixture of 32 pixal high and 64 pixal high OLEDs (all 128 pixals wide). But you can easily adjust the code for OLEDs of different sizes.
 
 #include <Wire.h> // Include Wire Library for I2C
 
@@ -158,12 +158,16 @@ void FormatBigScreenText(int Screen_Number){
 
           else { //this fucntion is to reduce the soted linewidth by the last blank
 
+           String LastBlankCharacter = "";
+           
+           LastBlankCharacter = TextToDisplay[Screen_Number][n];
+
            int x = 0;
            int y = BigScreenLine1Start;
            int16_t x1, y1;
            uint16_t w, h;
            BigScreen.setTextWrap(false);
-           BigScreen.getTextBounds(Glyph, x, y, &x1, &y1, &w, &h);
+           BigScreen.getTextBounds(LastBlankCharacter, x, y, &x1, &y1, &w, &h);
 
            LineWidth -= w;
 
@@ -296,12 +300,16 @@ void FormatSmallScreenText(int  Screen_Number){
 
           else { //this fucntion is to reduce the soted linewidth by the last blank
 
+           String LastBlankCharacter = "";
+           
+           LastBlankCharacter = TextToDisplay[Screen_Number][n];
+
            int x = 0;
            int y = SmallScreenLine1Start;
            int16_t x1, y1;
            uint16_t w, h;
            SmallScreen.setTextWrap(false);
-           SmallScreen.getTextBounds(Glyph, x, y, &x1, &y1, &w, &h);
+           SmallScreen.getTextBounds(LastBlankCharacter, x, y, &x1, &y1, &w, &h);
 
            LineWidth -= w;
 
