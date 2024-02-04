@@ -1,7 +1,15 @@
+//this code is written with the intension to print up to 64 OLED displays with text from  Hauptwerk Virtual Pipe Organ Software
+//the intended componetns are:
+// 1 arduino Due which can be pulgged directly into the computre running Hauptwerk and get the data via MIDI USB
+// 8 Adafruit TCA9548A i2c multiplexers - these enable us to control up to 8 i2c OLED displays that share the same i2c address.
+//    - note that the below draft of the code assumes all the OLEDs will have the address 0x3c.
+//    - note also that you need to link various combinations of the A0, A1 and A2 pins on the multiplexers to the possitive terminal to give each multiplexer a different i2c address.
+//    - note one multiplexer can control up to 8 OLED displays. So with a maximul of 8 multiplexers each controlling 8 OLED displays you could have up to 64 OLEDs running which is why this code is written to accomodate up to 64 OLEDs 
+// your choice of up to 64 OLEDs. This code is intended for a combination of 32 pixal wide OLEDs and 64 pixal wide, but all 128 pixals high. The code can be changed to accomodate any combination - just tell the software what OLEDs are 64 pixal and which ones are 32 pixal in the ScreenSixes array further down in the code.
+
 #include <Wire.h> // Include Wire Library for I2C
 
-// Include Adafruit Graphics & OLED libraries
-#include <Adafruit_SSD1306.h>
+#include <Adafruit_SSD1306.h> // Include Adafruit Graphics & OLED libraries
 #include <Adafruit_GFX.h>
 
 #include <Fonts/FreeSans9pt7b.h> //a number of fonts can be included into the scetch from the Adafruit Graphics Library
@@ -10,23 +18,22 @@
 
 #define Display_Address 0x3c //i2c address of the OLED displays we are working with - this code assumes that they are all the same
 
+//this code is designed to accomodate a mixture of small OLED displays (32 pixal height) and larger ones (64 pixal height). Both presumed to have a width of 128 pixals in this code but the code could  easily be altered to accmodate wider ones
 #define Big_Screen_Width 128
 #define Big_Screen_Height 64
 #define BigScreenFont &FreeSans9pt7b//define as "&" and then the name of the font we included above - this will then drive the font used later in the code. Leave blank here to just use the default font
 #define BigScreenFontSize 1 //will set size of text in dispalys later in the code
 #define BigScreenLine1Start 12
-#define BigScreenLineSpace 6
-#define BigScreenBoarder 25
+#define BigScreenLineSpace 4 //marks the gap inbetween rows of text on the OLEDs
+#define BigScreenBoarder 25 //indicates a number of pixals on the right that is needed later in the code to ensuer we don't print characters that are only partially visible on the far right of the display
 
 #define Small_Screen_Width 128
 #define Small_Screen_Height 32
 #define SmallScreenFont &FreeSans9pt7b
 #define SmallScreenFonttSize 1
 #define SmallScreenLine1Start 12
-#define SmallScreenLineSpace 6
+#define SmallScreenLineSpace 4
 #define SmallScreenBoarder 25
-
-
 
 Adafruit_SSD1306 BigScreen(Big_Screen_Width,Big_Screen_Height);
 Adafruit_SSD1306 SmallScreen(Small_Screen_Width,Small_Screen_Height);
@@ -82,8 +89,19 @@ void FormatBigScreenText(int Screen_Number){
 
  UpdateWidth(TextToDisplay[Screen_Number]);
 
+ bool IncludesNewLineCharacter = 0;
 
- if(Width <= (Big_Screen_Width - BigScreenBoarder)) {
+  for(int i=0; i<32; i++){
+
+   String Str = "";
+   Str = TextToDisplay[Screen_Number][i];
+
+   if(Str == "^") { IncludesNewLineCharacter = 1; }
+
+  }
+
+
+ if((Width <= (Big_Screen_Width - BigScreenBoarder)) && IncludesNewLineCharacter == 0) {
 
    BigScreen.setCursor(0,  BigScreenLine1Start);
    BigScreen.println(TextToDisplay[Screen_Number]);
@@ -91,9 +109,9 @@ void FormatBigScreenText(int Screen_Number){
   }
 
 
-  if( Width > (Big_Screen_Width - BigScreenBoarder) ){
+  else {
 
-   char Lines[4][32] = {};
+   char Lines[4][32] = {}; //big OLED displays are designed to hold up to two lines of text in this code
    String Str = "";
 
    int Line  =  0;
@@ -104,11 +122,10 @@ void FormatBigScreenText(int Screen_Number){
 
     for(int i=0; i<32; i++){ //step through the characters in the master character array of text to display
 
+      String Glyph = "";
+      Glyph = TextToDisplay[Screen_Number][i];
 
-      if(LineWidth <= (Big_Screen_Width - BigScreenBoarder)){
-
-       String Glyph = "";
-       Glyph = TextToDisplay[Screen_Number][i];
+      if((LineWidth <= (Big_Screen_Width - BigScreenBoarder)) && (Glyph != "^")){
 
         int x = 0;
         int y = BigScreenLine1Start;
@@ -124,14 +141,33 @@ void FormatBigScreenText(int Screen_Number){
        if(Glyph == " ") { LastBlank = i; };
 
       }
+
+      if(Glyph == "^"){ LastBlank = i; }
     
 
-      if(LineWidth > (Big_Screen_Width - BigScreenBoarder)){
+      if((LineWidth > (Big_Screen_Width - BigScreenBoarder)) || (Glyph == "^")){
 
 
-        for(int n = NextCharacterToPrint; n <= LastBlank; n++){ //put the characters up to last blank intl the character array line 0
+        for(int n = NextCharacterToPrint; n <= LastBlank; n++){ //put the characters up to last blank intl the character array to be printed
 
-         Str += TextToDisplay[Screen_Number][n];
+          if( n != LastBlank){ //this fnction is to ensuer that we don't put the last blank the character array to be printed 
+         
+           Str += TextToDisplay[Screen_Number][n];
+
+          }
+
+          else { //this fucntion is to reduce the soted linewidth by the last blank
+
+           int x = 0;
+           int y = BigScreenLine1Start;
+           int16_t x1, y1;
+           uint16_t w, h;
+           BigScreen.setTextWrap(false);
+           BigScreen.getTextBounds(Glyph, x, y, &x1, &y1, &w, &h);
+
+           LineWidth -= w;
+
+          }
 
          NextCharacterToPrint += 1;
 
@@ -156,8 +192,8 @@ void FormatBigScreenText(int Screen_Number){
 
 
     for(int n = NextCharacterToPrint; n < 32; n++){ //put the characters up to last blank intl the character array line 0
-
-       Str += TextToDisplay[Screen_Number][n];
+        
+     Str += TextToDisplay[Screen_Number][n];
 
     }
 
@@ -190,8 +226,19 @@ void FormatSmallScreenText(int  Screen_Number){
 
  UpdateWidth(TextToDisplay[Screen_Number]);
 
+ bool IncludesNewLineCharacter = 0;
 
- if(Width <= (Big_Screen_Width - BigScreenBoarder)) {
+  for(int i=0; i<32; i++){
+
+   String Str = "";
+   Str = TextToDisplay[Screen_Number][i];
+
+   if(Str == "^") { IncludesNewLineCharacter = 1; }
+
+  }
+
+
+ if((Width <= (Small_Screen_Width - SmallScreenBoarder)) && IncludesNewLineCharacter == 0) { //this function is that if the text is supposed to fit on one line it will be printed on one line
 
    SmallScreen.setCursor(0,  BigScreenLine1Start);
    SmallScreen.println(TextToDisplay[Screen_Number]);
@@ -199,9 +246,9 @@ void FormatSmallScreenText(int  Screen_Number){
   }
 
 
-  if( Width > (Big_Screen_Width - BigScreenBoarder) ){
+  else { //this funciton is triggered when eitehr the text we want to print won't fit on one line or we have included a, "^" that is a character we use to indicate a new line
 
-   char Lines[4][32] = {};
+   char Lines[2][32] = {}; //small OLED displays are designed to hold up to two lines of text in this code
    String Str = "";
 
    int Line  =  0;
@@ -212,11 +259,10 @@ void FormatSmallScreenText(int  Screen_Number){
 
     for(int i=0; i<32; i++){ //step through the characters in the master character array of text to display
 
+     String Glyph = "";
+     Glyph = TextToDisplay[Screen_Number][i];
 
-      if(LineWidth <= (Small_Screen_Width - SmallScreenBoarder)){
-
-       String Glyph = "";
-       Glyph = TextToDisplay[Screen_Number][i];
+      if((LineWidth <= (Small_Screen_Width - SmallScreenBoarder)) && (Glyph != "^")){
 
         int x = 0;
         int y = SmallScreenLine1Start;
@@ -229,17 +275,37 @@ void FormatSmallScreenText(int  Screen_Number){
 
        LineWidth += w;
 
-       if(Glyph == " ") { LastBlank = i; };
+       if(Glyph == " ") { LastBlank = i; }
 
       }
+
+      
+      if(Glyph == "^") { LastBlank = i; }
     
 
-      if(LineWidth > (Small_Screen_Width - SmallScreenBoarder)){
+      if((LineWidth > (Small_Screen_Width - SmallScreenBoarder)) || (Glyph == "^")){
 
 
         for(int n = NextCharacterToPrint; n <= LastBlank; n++){ //put the characters up to last blank intl the character array line 0
 
-         Str += TextToDisplay[Screen_Number][n];
+          if(n != LastBlank){
+
+           Str += TextToDisplay[Screen_Number][n];
+
+          }
+
+          else { //this fucntion is to reduce the soted linewidth by the last blank
+
+           int x = 0;
+           int y = SmallScreenLine1Start;
+           int16_t x1, y1;
+           uint16_t w, h;
+           SmallScreen.setTextWrap(false);
+           SmallScreen.getTextBounds(Glyph, x, y, &x1, &y1, &w, &h);
+
+           LineWidth -= w;
+
+          }
 
          NextCharacterToPrint += 1;
 
@@ -276,7 +342,7 @@ void FormatSmallScreenText(int  Screen_Number){
 
     for(int i=0; i <= Line; i++){
      
-     SmallScreen.setCursor(0, BigScreenLine1Start + (BigScreenLine1Start + BigScreenLineSpace)*i );
+     SmallScreen.setCursor(0, SmallScreenLine1Start + (SmallScreenLine1Start + SmallScreenLineSpace)*i );
      SmallScreen.println(Lines[i]);
     
     }
@@ -284,7 +350,6 @@ void FormatSmallScreenText(int  Screen_Number){
   }
 
   SmallScreen.display();
-
 
 }
 
@@ -318,7 +383,7 @@ int Channels[64] = { //array to match the 64 different OLED screen IDs from Haup
 
 };
 
-int ScreenSizes[64] = { //set to 0 for  32 pixal screens and  1 for  64 pixal screens
+bool ScreenSizes[64] = { //set to 0 for 32 pixal screens and  1 for 64 pixal screens
   
   0,0,0,0,0,0,1,1,
   0,0,0,1,1,0,0,0,
@@ -502,10 +567,9 @@ void setup() {
 
   for(int i = 0; i<=63; i++) { //initiate all OLEDs and get them to diplay what's currenlty in the character array
 
-   StartDisplay(i); 
+   StartDisplay(i);
 
   }
-
 
 }
 
