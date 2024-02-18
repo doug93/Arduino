@@ -511,7 +511,6 @@ USBMIDI_CREATE_DEFAULT_INSTANCE();
 const byte ID_HAUPTWERK=0x7D; //ID for Hauptwerk. Could end in upper case D? currently unsure
 const byte MIDI_SYSEX=7; //code for SysEx command
 
-
 void processIncomingMIDIforOLED() { // Process incoming MIDI traffic for Sysex (no event handler)
  
   if (MIDI.read()) {
@@ -546,7 +545,7 @@ void processIncomingMIDIforOLED() { // Process incoming MIDI traffic for Sysex (
 
            if(x == 22) { HauptwerkText += "^"; }
 
-           else {HauptwerkText += char(c); }
+           HauptwerkText += char(c);
 
           }
 
@@ -584,7 +583,7 @@ void processIncomingMIDIforOLED() { // Process incoming MIDI traffic for Sysex (
 
            if(x == 22) { HauptwerkText += "^"; }
 
-           else {HauptwerkText += char(c); }
+           HauptwerkText += char(c);
 
           }
 
