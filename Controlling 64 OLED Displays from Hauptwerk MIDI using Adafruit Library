@@ -6,6 +6,7 @@
 //    - note also that you need to link various combinations of the A0, A1 and A2 pins on the multiplexers to the possitive terminal to give each multiplexer a different i2c address.
 //    - note one multiplexer can control up to 8 OLED displays. So with a maximul of 8 multiplexers each controlling 8 OLED displays you could have up to 64 OLEDs running which is why this code is written to accomodate up to 64 OLEDs 
 // your choice of up to 64 OLEDs. Note the below version of the code is currenlty written to run a mixture of 32 pixal high and 64 pixal high OLEDs (all 128 pixals wide). But you can easily adjust the code for OLEDs of different sizes.
+// note I have made some ammends in the section that is reading Hauptwerk messages to customise the text being displayed to the screens I use for my current sample set, sequenser and combination.
 
 #include <Wire.h> // Include Wire Library for I2C
 
@@ -24,8 +25,9 @@
 #define BigScreenFont &FreeSans9pt7b//define as "&" and then the name of the font we included above - this will then drive the font used later in the code. Leave blank here to just use the default font
 #define BigScreenFontSize 1 //will set size of text in dispalys later in the code
 #define BigScreenLine1Start 12
-#define BigScreenLineSpace 4 //marks the gap inbetween rows of text on the OLEDs
-#define BigScreenBoarder 25 //indicates a number of pixals on the right that is needed later in the code to ensuer we don't print characters that are only partially visible on the far right of the display
+#define BigScreenLineSpace 6 //marks the gap inbetween rows of text on the OLEDs
+#define BigScreenBoarder 30 //indicates a number of pixals on the right that is needed later in the code to ensuer we don't print characters that are only partially visible on the far right of the display
+#define BigScreenCaracterSpace 0
 
 #define Small_Screen_Width 128
 #define Small_Screen_Height 32
@@ -33,11 +35,15 @@
 #define SmallScreenFonttSize 1
 #define SmallScreenLine1Start 12
 #define SmallScreenLineSpace 4
-#define SmallScreenBoarder 25
+#define SmallScreenBoarder 0
+#define SmallScreenCaracterSpace 2
 
 Adafruit_SSD1306 BigScreen(Big_Screen_Width,Big_Screen_Height);
 Adafruit_SSD1306 SmallScreen(Small_Screen_Width,Small_Screen_Height);
 
+#define SampleSetScreen 12
+#define SequensorScreen 13
+#define CombinationScreen 8
 
 char MultiplexerAddresses[] {0x70,0x71,0x72,0x73,0x74,0x75,0x76,0x77}; // array to store the I2C addressed  of  the  8  Multiplexers in this code
 
@@ -137,6 +143,7 @@ void FormatBigScreenText(int Screen_Number){
         BigScreen.getTextBounds(Glyph, x, y, &x1, &y1, &w, &h);
 
        LineWidth += w;
+       LineWidth += BigScreenCaracterSpace;
 
        if(Glyph == " ") { LastBlank = i; };
 
@@ -170,6 +177,7 @@ void FormatBigScreenText(int Screen_Number){
            BigScreen.getTextBounds(LastBlankCharacter, x, y, &x1, &y1, &w, &h);
 
            LineWidth -= w;
+           LineWidth -= BigScreenCaracterSpace;
 
           }
 
@@ -278,6 +286,7 @@ void FormatSmallScreenText(int  Screen_Number){
         SmallScreen.getTextBounds(Glyph, x, y, &x1, &y1, &w, &h);
 
        LineWidth += w;
+       LineWidth += SmallScreenCaracterSpace;
 
        if(Glyph == " ") { LastBlank = i; }
 
@@ -312,6 +321,7 @@ void FormatSmallScreenText(int  Screen_Number){
            SmallScreen.getTextBounds(LastBlankCharacter, x, y, &x1, &y1, &w, &h);
 
            LineWidth -= w;
+           LineWidth -= SmallScreenCaracterSpace;
 
           }
 
@@ -526,8 +536,62 @@ void processIncomingMIDIforOLED() { // Process incoming MIDI traffic for Sysex (
         int ScreenIndex = sysexmessage[3];
 
         String HauptwerkText = "";
+
+
+        if(ScreenIndex == (SampleSetScreen - 1)){
+
+          for (int x = 6; x <= 37; x++) { // Step through sysex message
+             
+           byte c = sysexmessage[x];
+
+           if(x == 22) { HauptwerkText += "^"; }
+
+           else {HauptwerkText += char(c); }
+
+          }
+
+        }
+
+
+        else if(ScreenIndex == (SequensorScreen - 1)){
+
+          for (int x = 6; x <= 37; x++) { // Step through sysex message
+             
+           byte c = sysexmessage[x];
+
+            if( (x == 14) || (x == 22) ) {
+              
+              HauptwerkText += "^";
+            
+            }
+
+            if( (x < 14) || ( (x > 14) && (x < 22) ) || (x > 29 ) ){
+
+             HauptwerkText += char(c);
+
+            }
+           
+          }
+
+        }
+
+
+        else if(ScreenIndex == (CombinationScreen - 1)){
+
+          for (int x = 6; x <= 37; x++) { // Step through sysex message
+             
+           byte c = sysexmessage[x];
+
+           if(x == 22) { HauptwerkText += "^"; }
+
+           else {HauptwerkText += char(c); }
+
+          }
+
+        }
+
         
-        for (int x = 6; x <= 37; x++) { // Step through sysex message
+        else for (int x = 6; x <= 37; x++) { // Step through sysex message
              
           byte c = sysexmessage[x];
 
